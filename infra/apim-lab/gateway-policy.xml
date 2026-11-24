@@ -1,0 +1,41 @@
+<policies>
+  <inbound />
+  <backend><forward-request timeout="45" /></backend>
+  <outbound>
+    <set-header name="x-pamadigi-request-id" exists-action="override">
+      <value>@(context.RequestId.ToString())</value>
+    </set-header>
+  </outbound>
+  <on-error>
+    <trace source="pamadigi-apim-lab" severity="error">
+      <message>gateway-error</message>
+      <metadata name="GatewayRequestId" value="@(context.RequestId.ToString())" />
+      <metadata name="ApiId" value="@(String.IsNullOrEmpty(context.Api?.Id) ? &quot;unmatched&quot; : context.Api.Id)" />
+      <metadata name="SubscriptionId" value="@(String.IsNullOrEmpty(context.Subscription?.Id) ? &quot;unauthenticated&quot; : context.Subscription.Id)" />
+      <metadata name="GatewayStatus" value="@{
+        var reason = context.LastError?.Reason;
+        if (reason == &quot;SubscriptionKeyNotFound&quot; || reason == &quot;SubscriptionKeyInvalid&quot;) { return &quot;401&quot;; }
+        return (context.Response?.StatusCode ?? 500).ToString();
+      }" />
+      <metadata name="Reason" value="@{
+        var reason = context.LastError?.Reason;
+        if (reason == &quot;SubscriptionKeyNotFound&quot; || reason == &quot;SubscriptionKeyInvalid&quot; ||
+            reason == &quot;RateLimitExceeded&quot; || reason == &quot;QuotaExceeded&quot;) { return reason; }
+        return &quot;GatewayError&quot;;
+      }" />
+    </trace>
+    <choose>
+      <when condition="@(context.LastError?.Reason == &quot;SubscriptionKeyNotFound&quot; || context.LastError?.Reason == &quot;SubscriptionKeyInvalid&quot;)">
+        <return-response>
+          <set-status code="401" reason="Unauthorized" />
+          <set-header name="x-pamadigi-request-id" exists-action="override"><value>@(context.RequestId.ToString())</value></set-header>
+          <set-header name="Content-Type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>{"error":{"code":"subscription_required","message":"Gunakan key APIM yang aktif untuk rute ini."}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <set-header name="x-pamadigi-request-id" exists-action="override">
+      <value>@(context.RequestId.ToString())</value>
+    </set-header>
+  </on-error>
+</policies>

@@ -1,0 +1,254 @@
+let ShowTransactions = false;
+let WindowEnd = now();
+let WindowStart = WindowEnd - 24h;
+let PriceCurrency = "USD";
+let NormalizeVersion = (v:string) {
+    iff(v matches regex @"^\d{4}-\d{2}-\d{2}(T.*)?$", substring(v, 0, 10), v)
+};
+let GuidPattern = @"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+let PartCost = (tokens:long, rate:real) {
+    iff(tokens == 0, 0.0, todouble(tokens) * rate)
+};
+// Control-plane snapshot checked on 2026-11-18. Refresh after deployment changes.
+// Public copy: replace placeholder subscription IDs and deployment metadata before use.
+// Deployment names resolve metadata here; they are NOT keys in the price table.
+let DeploymentInventoryInput = datatable(
+    ResourceKey:string, DeploymentKey:string, CatalogProvider:string,
+    CatalogModel:string, CatalogVersion:string, CatalogSku:string, CatalogRegion:string
+)
+[
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi1",
+    "gpt-5.6-sol", "OpenAI", "gpt-5.6-sol", "2026-07-09", "GlobalStandard", "eastus",
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi1",
+    "modelprojectx", "OpenAI", "gpt-5.6-sol", "2026-07-09", "GlobalStandard", "eastus",
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi1",
+    "modelprojecty", "OpenAI", "gpt-5.6-sol", "2026-07-09", "GlobalStandard", "eastus",
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi1",
+    "kimi-k2.5test", "MoonshotAI", "Kimi-K2.5", "1", "GlobalStandard", "eastus",
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi2",
+    "gpt-6-luna", "OpenAI", "gpt-6-luna", "2026-09-22", "GlobalStandard", "eastus",
+    "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg_demo_pamadigi/providers/microsoft.cognitiveservices/accounts/foundrydemoresourcedigi2",
+    "gpt-5.4-mini", "OpenAI", "gpt-5.4-mini", "2026-03-17", "GlobalStandard", "eastus"
+];
+let DeploymentInventory = DeploymentInventoryInput
+| extend ResourceKey=tolower(ResourceKey), DeploymentKey=tolower(DeploymentKey)
+| summarize InventoryRows=count(), InventoryValue=take_any(bag_pack(
+    "Provider", tolower(CatalogProvider),
+    "Model", tolower(CatalogModel),
+    "Version", NormalizeVersion(CatalogVersion),
+    "Sku", tolower(CatalogSku),
+    "Region", tolower(CatalogRegion)))
+    by ResourceKey, DeploymentKey;
+// Azure retail snapshot: USD per 1M tokens, East US, checked on 2026-11-18.
+// Cache-write prices are complete prices for those tokens, not extra input charges.
+let PriceInput = datatable(
+    ProviderKey:string, ModelKey:string, VersionKey:string, SkuKey:string,
+    RegionKey:string, Context:string, CurrencyKey:string,
+    InRate:real, ReadRate:real, WriteRate:real, Write12Rate:real, OutRate:real
+)
+[
+    "openai", "gpt-6-luna", "2026-09-22", "globalstandard", "eastus", "Short", "USD",
+    0.10, 0.01, 0.125, 0.25, 0.50,
+    "openai", "gpt-6-luna", "2026-09-22", "globalstandard", "eastus", "Long", "USD",
+    0.20, 0.02, 0.25, 0.50, 0.75,
+    "openai", "gpt-5.4-mini", "2026-03-17", "globalstandard", "eastus", "Short", "USD",
+    0.75, 0.075, real(null), real(null), 4.50,
+    "openai", "gpt-5.6-sol", "2026-07-09", "globalstandard", "eastus", "Short", "USD",
+    4.0, 0.4, 5.0, 10.0, 20.0,
+    "openai", "gpt-5.6-sol", "2026-07-09", "globalstandard", "eastus", "Long", "USD",
+    8.0, 0.8, 10.0, 20.0, 30.0
+];
+let Prices = PriceInput
+| summarize PriceRows=count(), PriceValue=take_any(bag_pack(
+    "Input", InRate, "Read", ReadRate, "Write", WriteRate,
+    "Write12", Write12Rate, "Output", OutRate))
+    by ProviderKey, ModelKey, VersionKey, SkuKey, RegionKey, Context, CurrencyKey;
+// Optional, trusted per-model-call metadata. Empty until application/agent tracing supplies it.
+// ResourceId must be the Foundry account ID; RequestId must match its CorrelationId.
+let RequestCallerMetadataInput = datatable(
+    ResourceId:string, RequestId:string, CallerId:string, CallerType:string,
+    CallerName:string, CallerApp:string, AgentId:string, ServiceName:string, EndUserId:string
+)
+[];
+let CallerContextInvalidKeys = toscalar(RequestCallerMetadataInput
+| summarize Errors=countif(isempty(ResourceId) or isempty(RequestId)));
+let RequestCallerMetadata = RequestCallerMetadataInput
+| extend ResourceKey=tolower(ResourceId), RequestKey=tolower(RequestId), CallerType=tolower(CallerType)
+| where isnotempty(ResourceKey) and isnotempty(RequestKey)
+| distinct ResourceKey, RequestKey, CallerId, CallerType, CallerName, CallerApp, AgentId, ServiceName, EndUserId
+| summarize CallerContextRows=count(), CallerValue=take_any(bag_pack(
+    "Id", CallerId, "Type", CallerType, "Name", CallerName,
+    "App", CallerApp, "Agent", AgentId, "Service", ServiceName, "User", EndUserId))
+    by ResourceKey, RequestKey;
+let Raw = materialize(AzureDiagnostics
+| where TimeGenerated >= WindowStart and TimeGenerated < WindowEnd
+| where ResourceProvider =~ "MICROSOFT.COGNITIVESERVICES"
+| where Category in ("AzureOpenAIRequestUsage", "RequestResponse")
+| project TimeGenerated, ResourceKey=tolower(_ResourceId), RequestKey=tolower(CorrelationId),
+    ResourceGroup, Foundry=tolower(Resource), Category, P=parse_json(properties_s));
+let RequestMetadata = Raw
+| where Category == "RequestResponse" and isnotempty(RequestKey)
+| extend NativeCaller=tolower(tostring(P.callerObjectId)), NativeObject=tolower(tostring(P.objectId))
+| extend
+    HasCaller=NativeCaller matches regex GuidPattern and NativeCaller != "00000000-0000-0000-0000-000000000000",
+    HasObject=NativeObject matches regex GuidPattern and NativeObject != "00000000-0000-0000-0000-000000000000"
+| extend
+    ProjectValue=tostring(P["project"])
+// Project proxy and model logs can share a timestamp; never select one entire row.
+| summarize
+    CallerCandidates=make_set_if(NativeCaller, HasCaller, 2),
+    ObjectCandidates=make_set_if(NativeObject, HasObject, 2),
+    ProjectCandidates=make_set_if(ProjectValue, isnotempty(ProjectValue), 2)
+    by ResourceKey, RequestKey
+| extend CallerCount=array_length(CallerCandidates), ObjectCount=array_length(ObjectCandidates),
+    ProjectCount=array_length(ProjectCandidates)
+| extend
+    PrincipalTercatat=case(
+        CallerCount == 1, tostring(CallerCandidates[0]),
+        CallerCount == 0 and ObjectCount == 1, tostring(ObjectCandidates[0]), ""),
+    SumberId=case(
+        CallerCount == 1, "callerObjectId",
+        CallerCount == 0 and ObjectCount == 1, "objectId",
+        CallerCount > 1 or ObjectCount > 1, "ID bertentangan", "Tidak tercatat"),
+    IdentityConflict=CallerCount > 1 or ObjectCount > 1
+        or (CallerCount == 1 and ObjectCount == 1
+            and tostring(CallerCandidates[0]) != tostring(ObjectCandidates[0])),
+    ProjectTercatat=iff(ProjectCount == 1, tostring(ProjectCandidates[0]), ""),
+    StatusProject=case(
+        ProjectCount > 1, "Metadata project bertentangan",
+        ProjectCount == 1, "Project dari RequestResponse",
+        "Project tidak tercatat pada RequestResponse"),
+    RequestMetadataFound=true
+| project ResourceKey, RequestKey, PrincipalTercatat, SumberId, IdentityConflict,
+    ProjectTercatat, StatusProject, RequestMetadataFound;
+let ResourceTags = arg("").Resources
+| where type in~ ("microsoft.cognitiveservices/accounts", "microsoft.cognitiveservices/accounts/projects")
+| project TagResourceKey=tolower(id), TagBag=tags, TagMetadataFound=true;
+Raw
+| where Category == "AzureOpenAIRequestUsage"
+| extend
+    WaktuUsage=iff(ShowTransactions, TimeGenerated, datetime(null)),
+    RequestId=iff(ShowTransactions, RequestKey, ""),
+    Model=tostring(P.modelName), ModelKey=tolower(tostring(P.modelName)),
+    ModelVersion=NormalizeVersion(tostring(P.modelVersion)),
+    Deployment=tostring(P.modelDeploymentName), DeploymentKey=tolower(tostring(P.modelDeploymentName)),
+    CurrencyKey=PriceCurrency
+| join kind=leftouter RequestMetadata on ResourceKey, RequestKey
+| lookup kind=leftouter RequestCallerMetadata on ResourceKey, RequestKey
+| extend StatusProject=iff(isnull(RequestMetadataFound), "RequestResponse belum cocok", StatusProject)
+| extend CallerContextComplete=CallerContextRows == 1
+    and isnotempty(tostring(CallerValue.Id))
+    and isnotempty(tostring(CallerValue.Name))
+    and tostring(CallerValue.Type) in ("agent", "service", "playground", "user")
+| extend
+    CallerId=iff(CallerContextComplete, tostring(CallerValue.Id), ""),
+    CallerType=iff(CallerContextComplete, tostring(CallerValue.Type), "(belum tercatat)"),
+    CallerName=iff(CallerContextComplete, tostring(CallerValue.Name), "(belum tercatat)"),
+    CallerApp=iff(CallerContextComplete, tostring(CallerValue.App), ""),
+    AgentId=iff(CallerContextComplete, tostring(CallerValue.Agent), ""),
+    ServiceName=iff(CallerContextComplete, tostring(CallerValue.Service), ""),
+    EndUserId=iff(CallerContextComplete, tostring(CallerValue.User), "")
+| extend StatusPemanggil=case(
+    CallerContextInvalidKeys > 0, "Konfigurasi metadata pemanggil memiliki kunci kosong",
+    CallerContextRows > 1, "Metadata pemanggil bertentangan",
+    CallerContextRows == 1 and not(CallerContextComplete), "Metadata pemanggil belum lengkap",
+    IdentityConflict, "ID principal berbeda; perlu verifikasi",
+    CallerContextComplete, "Metadata per request",
+    isnull(RequestMetadataFound), "RequestResponse belum cocok",
+    isempty(PrincipalTercatat), "Principal belum tercatat",
+    "Principal tercatat; agent/service belum diketahui")
+| lookup kind=leftouter DeploymentInventory on ResourceKey, DeploymentKey
+| extend
+    ProviderKey=tostring(InventoryValue.Provider),
+    SkuKey=tostring(InventoryValue.Sku),
+    RegionKey=tostring(InventoryValue.Region),
+    VersionKey=ModelVersion
+| extend StatusInventori=case(
+    isnull(InventoryRows), "Inventori deployment belum diperbarui",
+    InventoryRows != 1, "Inventori deployment duplikat",
+    isempty(ModelKey) or isempty(ModelVersion), "Model/versi tidak tercatat",
+    ModelKey != tostring(InventoryValue.Model) or ModelVersion != tostring(InventoryValue.Version),
+        "Inventori tidak cocok dengan model/versi log",
+    isempty(ProviderKey) or isempty(SkuKey) or isempty(RegionKey), "Inventori belum lengkap",
+    "Sesuai")
+| extend Blocks=pack_array(
+    bag_pack("Context", "Short", "Input", P.promptTokens, "Read", P.cachedTokens,
+        "Write", P.cacheWriteTokens, "Write12", P.cacheWriteTokens12h, "Output", P.generatedTokens),
+    bag_pack("Context", "Long", "Input", P.longContextPromptTokens, "Read", P.longContextCachedTokens,
+        "Write", P.longContextCacheWriteTokens, "Write12", P.longContextCacheWriteTokens12h,
+        "Output", P.longContextGeneratedTokens))
+| mv-expand B=Blocks
+| extend Context=tostring(B.Context), I=tolong(array_sum(B.Input)), C=tolong(array_sum(B.Read)),
+    W=tolong(array_sum(B.Write)), W12=tolong(array_sum(B.Write12)), O=tolong(array_sum(B.Output))
+| extend Fresh=I-C-W-W12
+| extend BadData=isnull(I) or isnull(C) or isnull(W) or isnull(W12) or isnull(O)
+    or Fresh < 0 or C < 0 or W < 0 or W12 < 0 or O < 0
+| lookup kind=leftouter Prices on ProviderKey, ModelKey, VersionKey, SkuKey, RegionKey, Context, CurrencyKey
+| extend RowCost=(PartCost(Fresh, todouble(PriceValue.Input))
+    + PartCost(C, todouble(PriceValue.Read))
+    + PartCost(W, todouble(PriceValue.Write))
+    + PartCost(W12, todouble(PriceValue.Write12))
+    + PartCost(O, todouble(PriceValue.Output))) / 1000000.0
+| extend NeedsPrice=Context == "Short" or I+O > 0
+| extend MissingPrice=NeedsPrice and (isnull(PriceRows) or PriceRows != 1 or isnull(RowCost))
+| summarize
+    CatatanUsage=countif(Context == "Short"),
+    InputToken=sum(I), OutputToken=sum(O),
+    BagianTanpaToken=countif(BadData), BagianTanpaTarif=countif(MissingPrice),
+    TarifDuplikat=countif(NeedsPrice and PriceRows > 1),
+    EstimasiUSD=sum(RowCost),
+    SumberId=make_set(SumberId, 3)
+    by ResourceKey, ResourceGroup, Foundry, WaktuUsage, RequestId, Model, ModelVersion, Deployment,
+        ProviderKey, SkuKey, RegionKey, CurrencyKey, StatusInventori,
+        ProjectTercatat, StatusProject, PrincipalTercatat, CallerId, CallerType, CallerName,
+        CallerApp, AgentId, ServiceName, EndUserId, StatusPemanggil
+| extend
+    InputToken=iff(BagianTanpaToken == 0, InputToken, long(null)),
+    OutputToken=iff(BagianTanpaToken == 0, OutputToken, long(null)),
+    EstimasiUSD=iff(StatusInventori == "Sesuai" and BagianTanpaToken == 0 and BagianTanpaTarif == 0,
+        round(EstimasiUSD, 8), real(null))
+| extend TotalToken=InputToken+OutputToken,
+    StatusHarga=case(
+        StatusInventori != "Sesuai", StatusInventori,
+        BagianTanpaToken > 0, "Data token perlu diperiksa",
+        TarifDuplikat > 0, "Tarif duplikat",
+        BagianTanpaTarif > 0, "Tarif belum dipetakan",
+        "Estimasi tersedia")
+| extend ProjectResourceId=case(
+    isempty(ProjectTercatat), "",
+    ProjectTercatat startswith "/subscriptions/", tolower(ProjectTercatat),
+    tolower(strcat(ResourceKey, "/projects/", ProjectTercatat)))
+| lookup kind=leftouter (
+    ResourceTags
+    | project ResourceKey=TagResourceKey, FoundryTagBag=TagBag, FoundryTagMetadataFound=TagMetadataFound
+    ) on ResourceKey
+| lookup kind=leftouter (
+    ResourceTags
+    | project ProjectResourceId=TagResourceKey, ProjectTagBag=TagBag, ProjectTagMetadataFound=TagMetadataFound
+    ) on ProjectResourceId
+// This is an explicit report overlay, not automatic Azure tag inheritance.
+| extend Tags=bag_merge(coalesce(ProjectTagBag, dynamic({})), coalesce(FoundryTagBag, dynamic({})))
+| extend AppTag=tostring(Tags["app"]), ProjectTag=tostring(Tags["project"]),
+    TagSource=case(
+        ProjectTagMetadataFound == true and FoundryTagMetadataFound == true, "Project + Foundry",
+        ProjectTagMetadataFound == true, "Project",
+        FoundryTagMetadataFound == true, "Foundry",
+        "Tidak terbaca")
+| extend StatusTag=case(
+    isnull(FoundryTagMetadataFound) and isnull(ProjectTagMetadataFound), "Metadata tag tidak terbaca",
+    isnotempty(ProjectResourceId) and isnull(ProjectTagMetadataFound), "Metadata tag project belum terbaca",
+    array_length(bag_keys(Tags)) == 0, "Tag belum diisi",
+    isempty(AppTag) and isempty(ProjectTag), "Tag lain tersedia; app/project belum diisi",
+    "Tag resource tersedia")
+| project WaktuUsage, RequestId, AppTag, ProjectTag, ProjectTercatat, Foundry, Model, ModelVersion, Deployment,
+    Sku=SkuKey, Region=RegionKey, PrincipalTercatat, CallerId, CallerType, CallerName,
+    CallerApp, AgentId, ServiceName, EndUserId, CatatanUsage, InputToken, OutputToken,
+    TotalToken, EstimasiUSD, MataUang=CurrencyKey, StatusHarga, StatusPemanggil, StatusProject, StatusTag,
+    TagSource, Tags, ProjectResourceId,
+    ResourceGroup, SumberId, BagianTanpaToken, BagianTanpaTarif, ResourceId=ResourceKey
+| order by WaktuUsage desc nulls last, TotalToken desc
+// Compact dashboard output only. For full detail, remove this final project
+// and set ShowTransactions=true, or copy the workshop's detail query.
+| project ResourceGroup, Foundry, ProjectTercatat, Model, Deployment,
+    CallerApp, CallerName, CatatanUsage, InputToken, OutputToken, TotalToken,
+    EstimasiUSD, StatusHarga, Tags

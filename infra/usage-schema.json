@@ -1,0 +1,16 @@
+[
+  {"name":"TimeGenerated","type":"datetime"},
+  {"name":"EventId","type":"string"},
+  {"name":"Project","type":"string"},
+  {"name":"Model","type":"string"},
+  {"name":"Deployment","type":"string"},
+  {"name":"Run","type":"string"},
+  {"name":"Phase","type":"string"},
+  {"name":"ApiRequestId","type":"string"},
+  {"name":"HttpStatus","type":"int"},
+  {"name":"ResponseStatus","type":"string"},
+  {"name":"LatencyMs","type":"int"},
+  {"name":"InputTokens","type":"long"},
+  {"name":"OutputTokens","type":"long"},
+  {"name":"TotalTokens","type":"long"}
+]

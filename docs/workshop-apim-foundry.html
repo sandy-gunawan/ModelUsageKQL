@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PAMA Digi · APIM dari setup sampai workbook</title>
+  <link rel="stylesheet" href="assets/workshop-fonts.css">
+  <style>
+    :root{color-scheme:light;--bg:#f4f8fc;--surface:#fff;--surface-soft:#edf5ff;--line:#c5d5e5;--ink:#172b44;--muted:#496078;--accent:#005a9e;--accent-strong:#004578;--warm:#8a4b08;font:16px/1.6 'IBM Plex Sans',system-ui,sans-serif}
+    *{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg)}a{color:var(--accent);text-underline-offset:.2em}a:focus-visible,summary:focus-visible{outline:3px solid white;outline-offset:3px}.wrap{max-width:70rem;margin:auto;padding-inline:1.15rem}.skip{position:absolute;left:1rem;top:.5rem;transform:translateY(-200%)}.skip:focus{transform:none;background:var(--bg);z-index:1}.kicker,code{font-family:'IBM Plex Mono',Consolas,monospace}.kicker{color:var(--accent);font-size:.82rem;letter-spacing:.085em;font-weight:600}.mast{border-bottom:1px solid var(--line);padding-block:.65rem}.mast .wrap,nav{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.25rem .8rem}nav{justify-content:flex-start}nav a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.15rem}.lead{padding-block:2.5rem 1rem}.lead p{max-width:63ch}h1{font-size:clamp(2.15rem,6.4vw,4.2rem);line-height:1.06;font-weight:650;letter-spacing:-.04em;margin:.4rem 0 1rem}h2{font-size:clamp(1.55rem,4vw,2.4rem);line-height:1.18;margin:.35rem 0 1rem}h3{margin:.4rem 0 .65rem;font-size:1.2rem;line-height:1.3}p{margin:.5rem 0 .9rem}.muted,figcaption,dt{color:var(--muted)}section{margin-block:2rem 3rem;scroll-margin-block-start:1rem}.grid{display:grid;gap:1rem}.grid>*{min-width:0}.panel{padding:1.15rem;border:1px solid var(--line);border-radius:.7rem;background:var(--surface)}.callout{border-left:3px solid var(--accent)}.warn{border-left-color:var(--warm)}.badge{border:1px solid var(--line);border-radius:1rem;padding:.2rem .65rem;margin-right:.3rem;white-space:nowrap;display:inline-block;font-size:.86rem}ol,ul{padding-inline-start:1.45rem}li+li{margin-block-start:.45rem}figure{margin:0}figure img{display:block;width:100%;height:auto;border-radius:.65rem;background:#f8fafc}figcaption{padding-top:.55rem;font-size:.93rem}code{font-size:.91em;overflow-wrap:anywhere;white-space:normal}pre{background:var(--bg);padding:.75rem;border-radius:.4rem;white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}pre code{font-size:.85rem}dl{margin:.6rem 0}dl div{padding-block:.5rem;border-bottom:1px solid var(--line)}dd{margin:0}details{margin-top:.7rem}summary{cursor:pointer;min-height:44px;padding-block:.5rem;color:var(--accent)}footer{border-top:1px solid var(--line);padding-block:1.2rem;color:var(--muted)}
+    .shots{display:grid;gap:1rem;margin-block:1rem}.shots figure{min-width:0}.shots a{display:block;border:1px solid var(--line);border-radius:.7rem;overflow:hidden}.shots figcaption{line-height:1.4}.shots strong{color:var(--accent)}
+    @media(min-width:46rem){.two,.shots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(min-width:64rem){.three{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  </style>
+  <link rel="stylesheet" href="assets/workshop-apim-viewer.css">
+  <script defer src="assets/workshop-apim-shots.js"></script>
+  <script defer src="assets/workshop-apim-viewer.js"></script>
+</head>
+<body>
+  <a class="skip" href="#isi">Ke bagian utama</a>
+  <header class="mast"><div class="wrap"><strong>PAMA Digi / Lab 02</strong><nav aria-label="Urutan panduan"><a href="#alur">1. Koneksi</a><a href="#setup-apim">2. Setup</a><a href="#app">3. Tes</a><a href="#laporan">4. Workbook</a><a href="#tambah-koneksi">5. Tambah koneksi</a></nav></div></header>
+  <main class="wrap" id="isi">
+    <div class="lead">
+      <p class="kicker">AZURE API MANAGEMENT + MICROSOFT FOUNDRY</p>
+      <h1>APIM ke Foundry, urut dari koneksi sampai laporan.</h1>
+      <p>Ikuti satu contoh: <strong>Project X</strong>. Pahami koneksinya, siapkan APIM, kirim satu pesan, lalu temukan request itu di workbook.</p>
+      <button class="help-button" type="button" popovertarget="help-apim">Baru pertama pakai APIM?</button>
+      <p class="muted reading-note"><strong>Menu + screenshot</strong> membuka petunjuk di halaman ini: mulai dari resource mana, urutan menu, dan bagian layar yang dituju.</p>
+    </div>
+
+    <section id="alur">
+      <p class="kicker">01 / CARA KERJA</p>
+      <h2>1. APIM tersambung ke mana?</h2>
+      <h3>Jalur pesan</h3>
+      <figure class="flow-diagram compact-diagram">
+        <div class="request-flow">
+          <a class="diagram-node" href="#shot-x-env" data-open-shot="shot-x-env"><strong>Server aplikasi X</strong><small>Base URL + key APIM</small></a>
+          <div class="flow-arrow"><span>kirim chat</span><span class="arrow-glyph" aria-hidden="true"></span></div>
+          <a class="diagram-node gateway-node" href="#shot-x-route" data-open-shot="shot-x-route"><strong>API Management</strong><small>Cek key, pilih backend</small></a>
+          <div class="flow-arrow"><span>token identitas</span><span class="arrow-glyph" aria-hidden="true"></span></div>
+          <a class="diagram-node" href="#shot-x-model" data-open-shot="shot-x-model"><strong>Foundry / Project X</strong><small>Deployment: modelprojectX</small></a>
+        </div>
+        <figcaption>Jawaban kembali lewat jalur yang sama. Key APIM disimpan di server aplikasi, bukan browser. Klik kotak untuk melihat menu setup-nya.</figcaption>
+      </figure>
+      <h3>Jalur log dan workbook</h3>
+      <figure class="monitor-diagram compact-diagram" aria-labelledby="monitor-caption">
+        <div class="monitor-flow">
+          <div class="diagram-stack">
+            <a class="diagram-node" href="#shot-apim-logger" data-open-shot="shot-apim-logger"><strong>APIM → Application Insights</strong><small>Logger + diagnostic API</small></a>
+            <a class="diagram-node" href="#shot-native-diagnostics" data-open-shot="shot-native-diagnostics"><strong>Foundry</strong><small>Diagnostic settings</small></a>
+          </div>
+          <div class="flow-arrow"><span>catat ke</span><span class="arrow-glyph" aria-hidden="true"></span></div>
+          <button class="diagram-node gateway-node" type="button" popovertarget="help-workspace"><strong>LAW utama</strong><small>AppTraces<br>AzureDiagnostics</small></button>
+          <div class="flow-arrow"><span>dibaca oleh</span><span class="arrow-glyph" aria-hidden="true"></span></div>
+          <div class="diagram-stack">
+            <a class="diagram-node" href="#shot-workbook-new" data-open-shot="shot-workbook-new"><strong>Workbook baru</strong><small>AppTraces + AzureDiagnostics</small></a>
+            <a class="diagram-node" href="#shot-workbook-old" data-open-shot="shot-workbook-old"><strong>Workbook lama</strong><small>AzureDiagnostics + LAW kedua</small></a>
+          </div>
+        </div>
+        <figcaption id="monitor-caption"><strong>Tambahan khusus workbook lama:</strong> generator → LAW kedua (<code>FoundryDemoRequests_CL</code>) → workbook lama. LAW menyimpan log; workbook hanya membaca dan menampilkannya.</figcaption>
+      </figure>
+    </section>
+
+    <details class="panel reference-block" id="setup">
+      <summary>Prasyarat dan resource lab yang sudah tersedia (opsional)</summary>
+      <p>Lab berada di resource group <code>rg_demo_pamadigi</code>. Resource dibuat lewat Bicep; screenshot berikut menunjukkan tempat memeriksanya, bukan bukti deploy lewat klik.</p>
+      <details class="panel"><summary>Langkah 1–7 · Resource group sampai identitas APIM</summary>
+        <div class="shots" data-gallery="Resource Azure">
+          <figure><a href="assets/apim-foundry-focus/01-rg.webp"><img loading="lazy" src="assets/apim-foundry-focus/01-rg.webp" width="707" height="144" alt="Daftar resource di grup PAMA Digi."></a><figcaption><strong>1.</strong> Resource group → Resources. Cari APIM dan Application Insights.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/02-foundry.webp"><img loading="lazy" src="assets/apim-foundry-focus/02-foundry.webp" width="1127" height="554" alt="Overview Foundry foundrydemoresourcedigi1 di East US."></a><figcaption><strong>2.</strong> Foundry → Overview. Cocokkan nama resource dan East US.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/03-projects.webp"><img loading="lazy" src="assets/apim-foundry-focus/03-projects.webp" width="914" height="426" alt="Tiga project di akun Foundry yang sama."></a><figcaption><strong>3.</strong> Foundry → Projects. Tiga project memakai resource induk yang sama.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/04-f1.webp"><img loading="lazy" src="assets/apim-foundry-focus/04-f1.webp" width="644" height="299" alt="App Service plan Linux dan East Asia."></a><figcaption><strong>4.</strong> Buka App Service plan. Cocokkan East Asia; lab memakai SKU F1.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/05-apim-deployment.webp"><img loading="lazy" src="assets/apim-foundry-focus/05-apim-deployment.webp" width="695" height="271" alt="Deployment pamadigi-apim-lab-gateway berstatus Succeeded."></a><figcaption><strong>5.</strong> Resource group → Deployments. Periksa deployment Bicep gateway.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/06-apim-overview.webp"><img loading="lazy" src="assets/apim-foundry-focus/06-apim-overview.webp" width="884" height="192" alt="Overview APIM dengan gateway URL dan tier Consumption."></a><figcaption><strong>6.</strong> APIM → Overview. Lihat gateway URL dan tier Consumption.</figcaption></figure>
+          <figure id="shot-apim-identity"><a href="assets/apim-foundry-focus/07-apim-identity.webp"><img loading="lazy" src="assets/apim-foundry-focus/07-apim-identity.webp" width="540" height="420" alt="Managed Identity APIM, System assigned berstatus On."></a><figcaption><strong>7.</strong> APIM → Managed identities. Status <strong>System assigned</strong> harus On.</figcaption></figure>
+        </div>
+      </details>
+      <details class="panel"><summary>Langkah 8–11 · Sambungkan telemetry</summary>
+        <div class="shots" data-gallery="Telemetry Azure">
+          <figure id="shot-native-diagnostics"><a href="assets/apim-foundry-focus/08-native-diagnostics.webp"><img loading="lazy" src="assets/apim-foundry-focus/08-native-diagnostics.webp" width="1166" height="231" alt="Kategori Request and Response dan Azure OpenAI Request Usage menuju workspace."></a><figcaption><strong>8.</strong> Foundry → Diagnostic settings. Cek dua kategori dan workspace tujuan.</figcaption></figure>
+          <figure id="shot-appinsights-workspace"><a href="assets/apim-foundry-focus/09-appinsights.webp"><img loading="lazy" src="assets/apim-foundry-focus/09-appinsights.webp" width="972" height="222" alt="Overview Application Insights; credential gelap dan nama Log Analytics workspace terlihat."></a><figcaption><strong>9.</strong> App Insights → Overview. Cek <strong>Logs workspace</strong> yang sama.</figcaption></figure>
+          <figure id="shot-apim-logger"><a href="assets/apim-foundry-focus/10-apim-logger.webp"><img loading="lazy" src="assets/apim-foundry-focus/10-apim-logger.webp" width="1001" height="197" alt="Tabel logger APIM dengan koneksi pamadigi-appinsights."></a><figcaption><strong>10.</strong> APIM → Application Insights. Periksa logger <code>pamadigi-appinsights</code>.</figcaption></figure>
+          <figure id="shot-apim-diagnostics"><a href="assets/apim-foundry-focus/11-apim-diagnostics.webp"><img loading="lazy" src="assets/apim-foundry-focus/11-apim-diagnostics.webp" width="905" height="441" alt="APIM diagnostic logging dengan pencatatan payload sebesar nol byte."></a><figcaption><strong>11.</strong> All APIs → Settings. Body yang dicatat harus 0 byte.</figcaption></figure>
+        </div>
+      </details>
+    </details>
+
+    <section id="setup-apim">
+      <p class="kicker">02 / SETUP KONEKSI</p>
+      <h2>2. Siapkan Project X dalam urutan ini</h2>
+      <p>Mulai dari APIM <code>apim-pamadigi-chat-432xhdd</code> yang sudah ada. Pilih nomor untuk melihat bagian yang diatur; <strong>Menu + screenshot</strong> membuka petunjuk lokasinya.</p>
+      <figure class="compact-diagram setup-flow" id="setup-flow" aria-labelledby="setup-flow-label">
+        <figcaption id="setup-flow-label">Bagian yang disetup, langkah demi langkah</figcaption>
+        <div class="setup-flow-steps" data-setup-controls role="group" aria-label="Pilih langkah setup" hidden>
+          <button type="button" data-setup-step="1" aria-label="1. API" aria-pressed="true" aria-controls="setup-flow-map">1<span class="setup-flow-step-label">. API</span></button>
+          <button type="button" data-setup-step="2" aria-label="2. Akses" aria-pressed="false" aria-controls="setup-flow-map">2<span class="setup-flow-step-label">. Akses</span></button>
+          <button type="button" data-setup-step="3" aria-label="3. Identity" aria-pressed="false" aria-controls="setup-flow-map">3<span class="setup-flow-step-label">. Identity</span></button>
+          <button type="button" data-setup-step="4" aria-label="4. Policy" aria-pressed="false" aria-controls="setup-flow-map">4<span class="setup-flow-step-label">. Policy</span></button>
+          <button type="button" data-setup-step="5" aria-label="5. App" aria-pressed="false" aria-controls="setup-flow-map">5<span class="setup-flow-step-label">. App</span></button>
+          <button type="button" data-setup-step="6" aria-label="6. Log" aria-pressed="false" aria-controls="setup-flow-map">6<span class="setup-flow-step-label">. Log</span></button>
+        </div>
+        <div class="setup-flow-map" id="setup-flow-map">
+          <div class="setup-flow-boundary">
+            <p class="setup-flow-boundary-title">Di dalam API Management</p>
+            <div class="setup-flow-parts">
+              <span class="setup-flow-part" data-setup-part="api" data-state="active">API + operation</span>
+              <span class="setup-flow-part" data-setup-part="access" data-state="idle">Product / subscription</span>
+              <span class="setup-flow-part" data-setup-part="identity" data-state="idle">Managed Identity</span>
+              <span class="setup-flow-part" data-setup-part="policy" data-state="idle">Inbound policy</span>
+              <span class="setup-flow-part setup-flow-logging" data-setup-part="logs" data-state="idle">Logger + diagnostics</span>
+            </div>
+          </div>
+          <div class="setup-flow-outside">
+            <p class="setup-flow-boundary-title">Di luar APIM</p>
+            <div class="setup-flow-context">
+              <span class="setup-flow-part" data-setup-part="app" data-state="idle">Web App</span>
+              <span class="setup-flow-part" data-setup-part="foundry" data-state="idle">Foundry / project</span>
+              <span class="setup-flow-part" data-setup-part="monitor" data-state="idle">App Insights + LAW</span>
+            </div>
+          </div>
+        </div>
+        <div class="setup-flow-status" role="status" aria-atomic="true">
+          <span class="setup-flow-count" data-setup-count>1/6</span>
+          <div><strong data-setup-path>APIM → API + operation</strong><p data-setup-note>Buat alamat masuk dan operasi chat.</p></div>
+        </div>
+        <div class="setup-flow-controls" data-setup-controls role="group" aria-label="Navigasi langkah setup" hidden>
+          <button class="setup-flow-control" type="button" data-setup-prev aria-label="Langkah sebelumnya" title="Langkah sebelumnya" aria-controls="setup-flow-map" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+          <button class="setup-flow-control" type="button" data-setup-next aria-label="Langkah berikutnya" title="Langkah berikutnya" aria-controls="setup-flow-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="menu-link" type="button" data-setup-menu>Menu + screenshot</button>
+        </div>
+        <p class="setup-flow-legend">Sorotan tebal = diatur; putus-putus = terkait. Ini panduan, bukan status live Azure.</p>
+        <noscript><p>Diagram statis menunjukkan langkah 1. Buka rincian di bawah untuk membaca seluruh langkah.</p></noscript>
+      </figure>
+      <details class="panel" id="setup-settings"><summary>Rincian setting dan menu per langkah</summary>
+      <table class="responsive-table setup-table">
+        <caption>Enam langkah konfigurasi; bukan enam layanan baru</caption>
+        <thead><tr><th scope="col">Urutan</th><th scope="col">Yang diatur</th><th scope="col">Lokasi</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1. API &amp; operation</th><td data-label="Yang diatur">Suffix <code>project-x/openai/v1</code>, operasi <code>POST /chat/completions</code>, subscription wajib.</td><td data-label="Lokasi"><a class="menu-link" href="#shot-x-create" data-shot-sequence="shot-x-create shot-x-settings shot-x-post" data-sequence-label="Langkah 1 · API dan operation">Menu + screenshot</a></td></tr>
+          <tr><th scope="row">2. Product &amp; key</th><td data-label="Yang diatur">Product X hanya berisi API X. Subscription <code>pamadigi-project-x</code> menghasilkan key X. <button class="help-button" type="button" popovertarget="help-product">Istilahnya?</button></td><td data-label="Lokasi"><a class="menu-link" href="#shot-x-product" data-shot-sequence="shot-x-product shot-x-key" data-sequence-label="Langkah 2 · Product dan subscription">Menu + screenshot</a></td></tr>
+          <tr><th scope="row">3. Identity &amp; izin</th><td data-label="Yang diatur">Identity APIM <strong>On</strong>; role <strong>Foundry User</strong> pada scope project X, bukan seluruh account. <button class="help-button" type="button" popovertarget="help-identity">Identity apa?</button></td><td data-label="Lokasi"><a class="menu-link" href="#shot-apim-identity" data-shot-sequence="shot-apim-identity shot-x-role" data-sequence-label="Langkah 3 · Identity dan izin">Menu + screenshot</a></td></tr>
+          <tr id="backend-foundry"><th scope="row">4. Backend &amp; model</th><td data-label="Yang diatur">Inbound policy memilih host Foundry, path project X, dan deployment <code>modelprojectX</code>. <button class="help-button" type="button" popovertarget="help-backend">Detail policy</button></td><td data-label="Lokasi"><a class="menu-link" href="#shot-x-route" data-shot-sequence="shot-x-route shot-x-model" data-sequence-label="Langkah 4 · Backend dan model">Menu + screenshot</a></td></tr>
+          <tr><th scope="row">5. Setting aplikasi</th><td data-label="Yang diatur">Isi <code>APIM_BASE_URL</code> dan <code>APIM_SUBSCRIPTION_KEY</code> di server Web App X.</td><td data-label="Lokasi"><a class="menu-link" href="#shot-x-env" data-open-shot="shot-x-env">Menu + screenshot</a></td></tr>
+          <tr><th scope="row">6. Pengiriman log</th><td data-label="Yang diatur">Logger <code>pamadigi-appinsights</code>, diagnostic API aktif, payload <strong>0 byte</strong>. Foundry mengirim log ke LAW utama yang sama.</td><td data-label="Lokasi"><a class="menu-link" href="#shot-apim-logger" data-shot-sequence="shot-apim-logger shot-apim-diagnostics shot-appinsights-workspace shot-native-diagnostics" data-sequence-label="Langkah 6 · Logger, diagnostics, dan workspace">Menu + screenshot</a></td></tr>
+        </tbody>
+      </table>
+      </details>
+      <details class="panel"><summary>Galeri sumber untuk langkah setup Project X</summary>
+      <div class="shots" data-gallery="Setup APIM · Project X">
+        <figure id="shot-x-create"><a href="assets/apim-foundry-focus/21-create-http-x.webp"><img loading="lazy" src="assets/apim-foundry-focus/21-create-http-x.webp" width="877" height="296" alt="Form Azure Portal Create an HTTP API untuk Project X, contoh belum disimpan."></a><figcaption><strong>Form HTTP API.</strong> Contoh isian Project X di Azure Portal, tidak disimpan. Lab yang sudah jalan dibuat lewat Bicep.</figcaption></figure>
+        <figure id="shot-x-post"><a href="assets/apim-foundry-focus/24-x-operation-path.webp"><img loading="lazy" src="assets/apim-foundry-focus/24-x-operation-path.webp" width="180" height="89" alt="Kartu Frontend di Azure Portal memperlihatkan POST /chat/completions."></a><figcaption><strong>Operasi API.</strong> Base URL + <code>/chat/completions</code> membentuk URL request.</figcaption></figure>
+        <figure id="shot-x-model"><a href="assets/apim-foundry-focus/22-x-policy-model.webp"><img loading="lazy" src="assets/apim-foundry-focus/22-x-policy-model.webp" width="834" height="59" alt="Baris policy APIM Project X menetapkan field model ke modelprojectX."></a><figcaption><strong>Pilih deployment.</strong> Policy yang menetapkan <code>modelprojectX</code>; UI tidak punya pemilih model.</figcaption></figure>
+        <figure id="shot-x-route"><a href="assets/apim-foundry-focus/23-x-policy-route.webp"><img loading="lazy" src="assets/apim-foundry-focus/23-x-policy-route.webp" width="940" height="166" alt="Policy APIM Project X menunjukkan backend Foundry, rewrite-uri dan Managed Identity."></a><figcaption><strong>Sambungkan ke Foundry.</strong> Policy mengatur host, path project, dan cara APIM login ke Foundry.</figcaption></figure>
+      </div>
+      </details>
+    </section>
+
+    <section id="app">
+      <p class="kicker">03 / TES SATU REQUEST</p>
+      <h2>3. Kirim pesan dari aplikasi X</h2>
+      <ol class="action-list">
+        <li><a href="https://pamadigi-chat-x-432xhdd.azurewebsites.net/.auth/login/aad?post_login_redirect_uri=/">Buka Web App X</a> dan login dengan akun yang diizinkan.</li>
+        <li>Tulis pesan contoh tanpa data pelanggan, lalu klik <strong>Kirim ke Foundry</strong>.</li>
+        <li>Pastikan <strong>HTTP 200</strong>, lalu salin <strong>ID request APIM</strong>. ID ini dipakai pada bagian 4.</li>
+      </ol>
+      <a class="menu-link" href="#shot-x-live" data-open-shot="shot-x-live">Lokasi UI + contoh hasil</a>
+      <details class="panel"><summary>Pilihan rute Main dan Y (pola setup-nya sama)</summary>
+        <table class="responsive-table"><caption>Tiga Web App terpisah, satu paket kode</caption><thead><tr><th scope="col">Rute</th><th scope="col">Suffix / subscription</th><th scope="col">Project → deployment</th></tr></thead><tbody>
+          <tr id="main"><th scope="row"><a href="https://pamadigi-chat-main-432xhdd.azurewebsites.net/.auth/login/aad?post_login_redirect_uri=/">Web App Main</a></th><td data-label="Suffix / subscription"><code>main/openai/v1</code><br><code>pamadigi-main</code></td><td data-label="Tujuan"><code>rg_demo_pamadigi-proj1</code> → <code>gpt-5.6-sol</code></td></tr>
+          <tr id="project-x"><th scope="row">Web App X</th><td data-label="Suffix / subscription"><code>project-x/openai/v1</code><br><code>pamadigi-project-x</code></td><td data-label="Tujuan"><code>pamadigiproject1_proj1</code> → <code>modelprojectX</code></td></tr>
+          <tr id="project-y"><th scope="row"><a href="https://pamadigi-chat-y-432xhdd.azurewebsites.net/.auth/login/aad?post_login_redirect_uri=/">Web App Y</a></th><td data-label="Suffix / subscription"><code>project-y/openai/v1</code><br><code>pamadigi-project-y</code></td><td data-label="Tujuan"><code>pamadigiproject1_proj2</code> → <code>modelprojectY</code></td></tr>
+        </tbody></table>
+      </details>
+      <details class="panel" id="bukti-browser">
+        <summary>Bukti lab 19 November 2026: Main, X, dan Y</summary>
+        <p>Ketiganya mendapat HTTP 200: 21 token input + 12 output per request. Ini bukti historis, bukan tes baru saat halaman dibuka.</p>
+        <div class="shots three" data-gallery="Hasil uji dari browser">
+          <figure><a href="assets/apim-foundry-focus/main-browser.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-browser.webp" width="1361" height="770" alt="Web App Main menampilkan jawaban Foundry, HTTP 200, 33 token dan ID request APIM."></a><figcaption><strong>Main · HTTP 200.</strong> Screenshot Web App untuk <code>gpt-5.6-sol</code>.</figcaption></figure>
+          <figure id="shot-x-live"><a href="assets/apim-foundry-focus/x-browser.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-browser.webp" width="1495" height="769" alt="Web App Project X menampilkan jawaban Foundry, HTTP 200, 33 token dan ID request APIM."></a><figcaption><strong>Project X · HTTP 200.</strong> Screenshot Web App untuk <code>modelprojectX</code>.</figcaption></figure>
+          <figure><a href="assets/apim-foundry-focus/y-browser.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-browser.webp" width="1361" height="770" alt="Web App Project Y menampilkan jawaban Foundry, HTTP 200, 33 token dan ID request APIM."></a><figcaption><strong>Project Y · HTTP 200.</strong> Screenshot Web App untuk <code>modelprojectY</code>.</figcaption></figure>
+        </div>
+      </details>
+      <details class="panel"><summary>Arsip screenshot konfigurasi ketiga rute</summary>
+      <details class="panel" id="portal-main"><summary>Main · 9 layar konfigurasi dan hasil</summary><div class="shots" data-gallery="Main · Konfigurasi dan uji API">
+        <figure><a href="assets/apim-foundry-focus/main-01.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-01.webp" width="404" height="135" alt="Hostname Web App Main di Overview."></a><figcaption><strong>1.</strong> Overview → Default domain Main.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-02.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-02.webp" width="689" height="273" alt="Persyaratan autentikasi Microsoft untuk Web App Main."></a><figcaption><strong>2.</strong> Authentication → Require authentication.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-03.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-03.webp" width="579" height="317" alt="Nama setting APIM di Web App Main; nilai key ditutup."></a><figcaption><strong>3.</strong> Environment variables → Base URL dan key Main, tanpa membuka secret.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-04.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-04.webp" width="796" height="342" alt="Base URL APIM Main dan subscription wajib."></a><figcaption><strong>4.</strong> API Settings → URL Main dan subscription wajib.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-05.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-05.webp" width="785" height="283" alt="Operasi POST Chat Completions di desain API Main."></a><figcaption><strong>5.</strong> Design → POST Chat Completions.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-06.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-06.webp" width="712" height="263" alt="Product Main hanya berisi API Main."></a><figcaption><strong>6.</strong> Products → API Main saja.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-07.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-07.webp" width="769" height="208" alt="Subscription Main disorot, kolom key ditutup."></a><figcaption><strong>7.</strong> Subscriptions → scope Main; pakai <code>&lt;APIM_KEY_MAIN&gt;</code> sebagai placeholder.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-08-iam.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-08-iam.webp" width="1206" height="193" alt="Role Foundry User APIM pada project Main."></a><figcaption><strong>8.</strong> Role assignments → project <code>rg_demo_pamadigi-proj1</code>.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/main-09.webp"><img loading="lazy" src="assets/apim-foundry-focus/main-09.webp" width="945" height="299" alt="Uji langsung ke API Main mendapat HTTP 200."></a><figcaption><strong>9.</strong> Workbook → status 200 dari uji API langsung untuk Main.</figcaption></figure>
+      </div></details>
+      <details class="panel" id="portal-x"><summary>Project X · 9 layar konfigurasi dan hasil</summary><div class="shots" data-gallery="Project X · Konfigurasi dan uji API">
+        <figure><a href="assets/apim-foundry-focus/x-01.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-01.webp" width="404" height="135" alt="Hostname Web App Project X di Overview."></a><figcaption><strong>1.</strong> Overview → Default domain X.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/x-02.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-02.webp" width="689" height="273" alt="Persyaratan autentikasi Microsoft untuk Web App X."></a><figcaption><strong>2.</strong> Authentication → Require authentication.</figcaption></figure>
+        <figure id="shot-x-env"><a href="assets/apim-foundry-focus/x-03.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-03.webp" width="579" height="317" alt="Nama setting APIM di Web App X; nilai key ditutup."></a><figcaption><strong>3.</strong> Environment variables → Base URL dan key X, tanpa membuka secret.</figcaption></figure>
+        <figure id="shot-x-settings"><a href="assets/apim-foundry-focus/x-04.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-04.webp" width="796" height="342" alt="Base URL APIM Project X dan subscription wajib."></a><figcaption><strong>4.</strong> API Settings → URL X dan subscription wajib.</figcaption></figure>
+        <figure id="shot-x-operation"><a href="assets/apim-foundry-focus/x-05.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-05.webp" width="849" height="276" alt="Operasi POST Chat Completions di desain API X."></a><figcaption><strong>5.</strong> Design → POST Chat Completions.</figcaption></figure>
+        <figure id="shot-x-product"><a href="assets/apim-foundry-focus/x-06.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-06.webp" width="712" height="263" alt="Product Project X hanya berisi API X."></a><figcaption><strong>6.</strong> Products → API Project X saja.</figcaption></figure>
+        <figure id="shot-x-key"><a href="assets/apim-foundry-focus/x-07.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-07.webp" width="769" height="208" alt="Subscription Project X disorot, kolom key ditutup."></a><figcaption><strong>7.</strong> Subscriptions → scope X; placeholder <code>&lt;APIM_KEY_X&gt;</code>.</figcaption></figure>
+        <figure id="shot-x-role"><a href="assets/apim-foundry-focus/x-08-iam.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-08-iam.webp" width="1206" height="248" alt="Role Foundry User APIM pada project X."></a><figcaption><strong>8.</strong> Role assignments → project <code>pamadigiproject1_proj1</code>.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/x-09.webp"><img loading="lazy" src="assets/apim-foundry-focus/x-09.webp" width="945" height="299" alt="Uji langsung ke API Project X mendapat HTTP 200."></a><figcaption><strong>9.</strong> Workbook → status 200 dari uji API langsung untuk X.</figcaption></figure>
+      </div></details>
+      <details class="panel" id="portal-y"><summary>Project Y · 9 layar konfigurasi dan hasil</summary><div class="shots" data-gallery="Project Y · Konfigurasi dan uji API">
+        <figure><a href="assets/apim-foundry-focus/y-01.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-01.webp" width="404" height="135" alt="Hostname Web App Project Y di Overview."></a><figcaption><strong>1.</strong> Overview → Default domain Y.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-02.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-02.webp" width="689" height="273" alt="Persyaratan autentikasi Microsoft untuk Web App Y."></a><figcaption><strong>2.</strong> Authentication → Require authentication.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-03.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-03.webp" width="579" height="317" alt="Nama setting APIM di Web App Y; nilai key ditutup."></a><figcaption><strong>3.</strong> Environment variables → Base URL dan key Y, tanpa membuka secret.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-04.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-04.webp" width="796" height="342" alt="Base URL APIM Project Y dan subscription wajib."></a><figcaption><strong>4.</strong> API Settings → URL Y dan subscription wajib.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-05.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-05.webp" width="847" height="278" alt="Operasi POST Chat Completions di desain API Y."></a><figcaption><strong>5.</strong> Design → POST Chat Completions.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-06.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-06.webp" width="712" height="265" alt="Product Project Y hanya berisi API Y."></a><figcaption><strong>6.</strong> Products → API Project Y saja.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-07.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-07.webp" width="769" height="208" alt="Subscription Project Y disorot, kolom key ditutup."></a><figcaption><strong>7.</strong> Subscriptions → scope Y; placeholder <code>&lt;APIM_KEY_Y&gt;</code>.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-08-iam.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-08-iam.webp" width="1206" height="339" alt="Role Foundry User APIM pada project Y."></a><figcaption><strong>8.</strong> Role assignments → project <code>pamadigiproject1_proj2</code>.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/y-09.webp"><img loading="lazy" src="assets/apim-foundry-focus/y-09.webp" width="945" height="304" alt="Uji langsung ke API Project Y mendapat HTTP 200."></a><figcaption><strong>9.</strong> Workbook → status 200 dari uji API langsung untuk Y.</figcaption></figure>
+      </div></details>
+      </details>
+      <details class="panel"><summary>Contoh body dan batas demo</summary><pre><code>Content-Type: application/json
+
+{"model":"apim-chooses-deployment","messages":[{"role":"user","content":"Balas satu kalimat: uji koneksi PAMA Digi berhasil."}]}</code></pre><p>APIM menetapkan nama deployment. Lab ini hanya mendukung Chat Completions teks tanpa streaming atau tools, maksimal 700 karakter dan 256 token output. Jangan kirim data pelanggan. APIM membatasi 5 panggilan/menit dan 100 panggilan total per subscription.</p></details>
+      <details class="panel"><summary>Hasil uji penolakan akses (historis)</summary><p>Enam request langsung berhasil dengan dua bentuk header. Enam kombinasi key tertukar, satu request tanpa key, dan satu key salah ditolak <code>401</code>. Saat X disuspend untuk tes, Main dan Y tetap berjalan; X diaktifkan kembali setelah tes.</p></details>
+    </section>
+
+    <section id="laporan">
+      <p class="kicker">04 / BACA HASIL</p>
+      <h2>4. Pilih workbook sesuai pertanyaannya</h2>
+      <table class="responsive-table comparison-table">
+        <caption>Nama workbook pada header dapat diklik untuk membuka lokasi menunya</caption>
+        <thead><tr><th scope="col">Perbedaan</th><th scope="col"><a href="#shot-workbook-old" data-open-shot="shot-workbook-old">Lama · Verified Foundry Usage</a></th><th scope="col"><a href="#shot-workbook-new" data-open-shot="shot-workbook-new">Baru · APIM dan Foundry</a></th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Pertanyaan utama</th><td data-label="Lama">Model/deployment mana yang dipakai, berapa tokennya?</td><td data-label="Baru">Subscription mana memanggil rute apa, diterima/ditolak, dan berapa token modelnya?</td></tr>
+          <tr><th scope="row">Cakupan</th><td data-label="Lama">Panggilan ke Foundry yang tercatat, termasuk yang lewat APIM.</td><td data-label="Baru">Tiga rute APIM yang didaftarkan query, termasuk penolakan gateway.</td></tr>
+          <tr><th scope="row">Pemanggil</th><td data-label="Lama"><code>Caller = unknown</code>; query tidak mengambil identity native.</td><td data-label="Baru"><code>Subscription</code>, <code>Aplikasi</code>, <code>Rute</code>. Bukan otomatis identitas pengguna akhir.</td></tr>
+          <tr><th scope="row">ID pelacakan</th><td data-label="Lama"><code>CorrelationId</code> native; data generator memakai <code>ApiRequestId</code>.</td><td data-label="Baru"><code>IdGateway</code> → <code>IdFoundry</code>.</td></tr>
+          <tr><th scope="row">Sumber token</th><td data-label="Lama">Native atau generator; lihat <code>Source</code>.</td><td data-label="Baru">Native jika cocok; jika belum, usage respons HTTP bila tersedia. Lihat <code>SumberToken</code>.</td></tr>
+          <tr><th scope="row">Estimasi biaya</th><td data-label="Lama">Tidak ada di query ini.</td><td data-label="Baru"><code>EstimasiUSD</code> jika kondisi harga terpenuhi. Kosong bukan nol; bukan billing Azure.</td></tr>
+          <tr><th scope="row">KQL yang dipakai</th><td data-label="Lama"><a href="../queries/foundry-verified-direct.kql">KQL lama · Request explorer (.kql)</a></td><td data-label="Baru"><a href="../queries/apim-foundry-report.kql">KQL baru · APIM + Foundry (.kql)</a> · <a href="../infra/apim-lab/workbook.bicep">susunan panel workbook</a></td></tr>
+        </tbody>
+      </table>
+      <p>Bandingkan request yang sama, bukan menjumlahkan kedua workbook. <button class="help-button" type="button" popovertarget="help-tokens">Kenapa totalnya bisa berbeda?</button></p>
+      <h3>Cocokkan request yang barusan dikirim</h3>
+      <ol>
+        <li>Di <strong>workbook baru → panel 3</strong>, cari ID dari aplikasi pada <code>IdGateway</code>.</li>
+        <li>Salin <code>IdFoundry</code> dari baris itu.</li>
+        <li>Di <strong>workbook lama → Request explorer</strong>, cocokkan dengan <code>CorrelationId</code>. Rentang waktunya harus mencakup tes.</li>
+      </ol>
+      <details class="panel"><summary>Bukti kecocokan di Portal (19 November 2026)</summary>
+      <div class="shots" data-gallery="Bukti browser di Azure Portal">
+        <figure><a href="assets/apim-foundry-focus/17-kql-browser-requests.webp"><img loading="lazy" src="assets/apim-foundry-focus/17-kql-browser-requests.webp" width="697" height="126" alt="Azure Portal Logs menampilkan HTTP 200 dan 33 token native untuk ketiga ID Web App."></a><figcaption><strong>1 · Azure Portal → Logs.</strong> Filter tiga ID dari browser. Setiap rute punya respons 200 dan 33 token native.</figcaption></figure>
+        <figure id="shot-workbook-new"><a href="assets/apim-foundry-focus/19-workbook-apim-requests.webp"><img loading="lazy" src="assets/apim-foundry-focus/19-workbook-apim-requests.webp" width="1317" height="177" alt="Workbook baru menampilkan IdGateway dan IdFoundry yang cocok untuk Main, X, dan Y."></a><figcaption><strong>2 · Workbook baru.</strong> Ambil <code>IdFoundry</code> dari baris dengan <code>IdGateway</code> yang sama dengan layar Web App.</figcaption></figure>
+        <figure id="shot-workbook-old"><a href="assets/apim-foundry-focus/18-workbook-native-requests.webp"><img loading="lazy" src="assets/apim-foundry-focus/18-workbook-native-requests.webp" width="1325" height="209" alt="Request explorer Workbook lama menampilkan tiga deployment, token, dan CorrelationId. Kolom Caller menampilkan unknown."></a><figcaption><strong>3 · Workbook lama → Request explorer.</strong> Tiga <code>CorrelationId</code> Foundry dan tokennya muncul. Kolom <code>Caller</code> masih <code>unknown</code>.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/20-kql-foundry-caller.webp"><img loading="lazy" src="assets/apim-foundry-focus/20-kql-foundry-caller.webp" width="585" height="126" alt="Azure Portal Logs membandingkan callerObjectId dan objectId ke Managed Identity APIM; ketiga baris cocok dan memiliki field IP."></a><figcaption><strong>4 · Azure Portal → Logs.</strong> Log <code>RequestResponse</code>: <code>CallerObjectIdCocok</code> dan <code>ObjectIdCocok</code> sama-sama <code>true</code> untuk identitas APIM. Nilai IP tidak ditampilkan.</figcaption></figure>
+      </div>
+      </details>
+      <details class="panel"><summary>Catatan query, filter, dan inventori tag</summary>
+        <p>KQL lama adalah salinan panel <strong>Request explorer</strong> dengan <code>TimeRange</code> diganti <code>Mulai</code>/<code>Selesai</code> agar bisa ditempel di Logs. Ini bukan <a href="../queries/foundry-native-usage-cost.kql">KQL native lengkap</a> dari workshop monitoring, dan bukan workbook generator <strong>PAMADIGI - Foundry Usage</strong>.</p>
+        <p>KQL baru memakai 24 jam terakhir; ubah <code>Mulai</code>/<code>Selesai</code> dan isi <code>IdFilter</code> untuk satu ID APIM. Untuk menyimpannya di workbook: <strong>Edit → edit panel query → Done editing → Save</strong>. Mengubah file lokal tidak otomatis memperbarui Azure.</p>
+        <p>Panel inventori tag lama membaca Azure Resource Graph; query baru tidak. Log dan role dibaca sesuai izin pengguna. Pada bukti lab, <code>ProjectTercatat</code> belum terisi; <code>ProjectTujuan</code> berasal dari policy.</p>
+      </details>
+      <details class="panel"><summary>Coba query untuk mengecek caller</summary>
+        <p>Di workspace yang sama, buka <strong>Logs → KQL mode</strong>, tempel query ini, lalu klik <strong>Run</strong>. Perlu izin baca log dan resource APIM. Untuk tes baru, ganti <code>CorrelationId</code> dengan <code>IdFoundry</code> dari Workbook baru dan sesuaikan waktunya. Query hanya menunjukkan kecocokan, bukan nilai ID identitas atau IP.</p>
+        <pre><code>let ApimPrincipal = toscalar(arg("").Resources
+| where type =~ "microsoft.apimanagement/service" and resourceGroup =~ "rg_demo_pamadigi"
+| where name =~ "apim-pamadigi-chat-432xhdd"
+| project Principal=tostring(identity.principalId) | take 1);
+AzureDiagnostics
+| where TimeGenerated between (datetime(2026-11-19T15:22:00Z) .. datetime(2026-11-19T15:33:00Z))
+| where _ResourceId endswith "/accounts/foundrydemoresourcedigi1" and Category == "RequestResponse"
+| where CorrelationId in~ ("a37ce002-31bb-4407-a438-c0ac0a844882", "1592b053-85b0-4ecd-991b-e3ced9aca1e0", "5a08f782-59e6-4d99-b5ff-044111a44583")
+| extend P=parse_json(column_ifexists("properties_s", ""))
+| project Deployment=tostring(P.modelDeploymentName), CorrelationId,
+    CallerObjectIdCocok=isnotempty(ApimPrincipal) and tostring(P.callerObjectId) =~ ApimPrincipal,
+    ObjectIdCocok=isnotempty(ApimPrincipal) and tostring(P.objectId) =~ ApimPrincipal,
+    AdaIP=isnotempty(tostring(column_ifexists("CallerIPAddress", "")))
+| order by Deployment asc</code></pre>
+      </details>
+      <details class="panel"><summary>Bukti tambahan dari uji API langsung · Langkah 12–16</summary><div class="shots" data-gallery="Bukti uji API langsung">
+        <figure><a href="assets/apim-foundry-focus/12-cross-key.webp"><img loading="lazy" src="assets/apim-foundry-focus/12-cross-key.webp" width="960" height="320" alt="Workbook: key Project X pada endpoint Y ditolak 401."></a><figcaption><strong>12.</strong> X → Y mendapat 401. Request tidak sampai ke model.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/13-kql-traffic.webp"><img loading="lazy" src="assets/apim-foundry-focus/13-kql-traffic.webp" width="817" height="412" alt="Tabel traffic API Management menurut rute dan subscription."></a><figcaption><strong>13.</strong> Baca jumlah sukses dan ditolak per rute.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/14-kql-usage.webp"><img loading="lazy" src="assets/apim-foundry-focus/14-kql-usage.webp" width="956" height="204" alt="Tabel pemakaian penuh dengan jumlah token; estimasi tidak diada-adakan."></a><figcaption><strong>14.</strong> Cek jumlah input/output dan total token dari query.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/15-kql-one-request.webp"><img loading="lazy" src="assets/apim-foundry-focus/15-kql-one-request.webp" width="949" height="217" alt="IdGateway Project X tersorot, cocok dengan ID Foundry."></a><figcaption><strong>15.</strong> Cocokkan ID request APIM dengan log Foundry.</figcaption></figure>
+        <figure><a href="assets/apim-foundry-focus/16-workbook.webp"><img loading="lazy" src="assets/apim-foundry-focus/16-workbook.webp" width="951" height="330" alt="Workbook PAMA Digi APIM dan Foundry di Azure Portal."></a><figcaption><strong>16.</strong> Gunakan Workbook khusus lab APIM ini.</figcaption></figure>
+      </div></details>
+    </section>
+
+    <section id="tambah-koneksi">
+      <p class="kicker">05 / KONEKSI BERIKUTNYA</p>
+      <h2>5. Parameter mana yang berubah?</h2>
+      <p><strong>Pakai koneksi X yang sudah ada:</strong> cukup isi URL dan key X di server. <strong>Butuh koneksi terpisah:</strong> buat pasangan rute, product, dan subscription baru melalui langkah setup di bagian 2.</p>
+      <details class="panel"><summary>Daftar parameter — contoh X</summary>
+        <table class="responsive-table parameter-table"><caption>Ubah hanya bagian yang targetnya berbeda</caption><thead><tr><th scope="col">Parameter</th><th scope="col">Contoh X</th><th scope="col">Pengaruh</th></tr></thead><tbody>
+          <tr><th scope="row"><code>APIM_BASE_URL</code></th><td data-label="Contoh"><code>https://apim-pamadigi-chat-432xhdd.azure-api.net/project-x/openai/v1</code></td><td data-label="Pengaruh">Alamat depan gateway di server aplikasi, tanpa <code>/chat/completions</code>.</td></tr>
+          <tr><th scope="row"><code>APIM_SUBSCRIPTION_KEY</code></th><td data-label="Contoh"><code>&lt;APIM_KEY_X&gt;</code></td><td data-label="Pengaruh">Key koneksi. Jika dibagi bersama, laporan juga menganggapnya koneksi yang sama.</td></tr>
+          <tr><th scope="row"><code>path</code> / subscription</th><td data-label="Contoh"><code>project-x</code> / <code>pamadigi-project-x</code></td><td data-label="Pengaruh">Suffix API, product, serta pemeriksaan <code>__SUBSCRIPTION__</code> pada policy.</td></tr>
+          <tr><th scope="row"><code>foundryName</code></th><td data-label="Contoh"><code>foundrydemoresourcedigi1</code></td><td data-label="Pengaruh">Host backend pada <code>set-backend-service</code>.</td></tr>
+          <tr><th scope="row"><code>project</code></th><td data-label="Contoh"><code>pamadigiproject1_proj1</code></td><td data-label="Pengaruh">Path <code>rewrite-uri</code> dan scope role Foundry User.</td></tr>
+          <tr><th scope="row"><code>deployment</code></th><td data-label="Contoh"><code>modelprojectX</code></td><td data-label="Pengaruh">Field <code>model</code> yang ditetapkan policy; deployment harus sudah ada.</td></tr>
+        </tbody></table>
+      </details>
+      <p>Demo membatasi tiga rute. Menambah profil saja belum membuat rute keempat siap dipakai. <button class="help-button" type="button" popovertarget="help-newroute">Perubahan untuk rute baru</button></p>
+    </section>
+
+    <details class="panel reference-block" id="biaya">
+      <summary>Referensi biaya dan batas demo</summary>
+      <ul>
+        <li><a href="https://azure.microsoft.com/en-us/pricing/details/app-service/linux/">App Service Linux F1</a>: biaya hosting US$0, tanpa SLA. Request awal bisa lebih lambat.</li>
+        <li><a href="https://azure.microsoft.com/en-us/pricing/details/api-management/">APIM Consumption</a>: tanpa biaya tetap. Operasi demo memakai jatah gratis yang dibagi per subscription Azure, selama jatah masih tersedia.</li>
+        <li><a href="https://azure.microsoft.com/en-us/pricing/details/azure-openai/">GPT‑5.6-sol Global Standard, short context</a>: contoh 30 request × (300 token input × US$4/juta + 150 token output × US$20/juta) ≈ <strong>US$0,13</strong>. Ini perkiraan retail, bukan tagihan. Ingest log dan transfer data bisa menambah biaya. Tidak ada App Insights atau workspace baru.</li>
+      </ul>
+      <p>Untuk menghentikan trafik demo tanpa menghapus Foundry, suspend tiga subscription demo di APIM. Rotasi atau bagikan key hanya dari kanal yang disetujui.</p>
+    </details>
+    <details class="panel reference-block" id="video">
+      <summary>Video lab dan sumber menu</summary>
+      <p>Video senyap 3 menit 40 detik memakai urutan materi sebelumnya. Untuk panduan ringkas saat ini, ikuti bagian 1–5 di atas. Screenshot adalah bukti lab 19 November 2026; sumber jalur menu tercantum pada setiap popup dan diperiksa 20 November 2026.</p>
+      <p><a href="video/apim-foundry-demo.mp4" download>Unduh video MP4 1080p</a> · <a href="video/apim-foundry-storyboard.md">Baca teks dan urutan adegan</a></p>
+      <p>Source konfigurasi: <a href="../infra/apim-lab/gateway.bicep">resource APIM</a> · <a href="../infra/apim-lab/route-policy.xml">policy rute lengkap</a> · <a href="../infra/apim-lab/profiles.json">profil tiga API</a>.</p>
+      <p>Diagram teknis versi lengkap tersedia sebagai file, tidak ditampilkan ulang di panduan: <a href="diagrams/apim-foundry-lab.drawio" download>arsitektur lab (.drawio)</a> · <a href="diagrams/apim-foundry-gateway.drawio" download>isi gateway (.drawio)</a>.</p>
+    </details>
+  </main>
+  <footer><div class="wrap"><a href="video/apim-foundry-storyboard.md">Storyboard video senyap</a> · <span>Laporan hasil run tidak disertakan di repo publik</span> · <a href="https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-app-insights">Logger APIM</a> · <a href="https://learn.microsoft.com/en-us/azure/api-management/set-backend-service-policy">Policy backend</a> · <a href="https://learn.microsoft.com/en-us/azure/azure-monitor/visualize/workbooks-overview">Azure Workbooks</a></div></footer>
+  <aside class="help-popover" id="help-apim" popover="auto" role="dialog" aria-labelledby="help-apim-title">
+    <div class="help-heading"><h2 id="help-apim-title">APIM itu pintu masuk API</h2><button class="help-close" type="button" popovertarget="help-apim" popovertargetaction="hide">Tutup</button></div>
+    <p>Aplikasi tidak langsung memanggil Foundry. Ia memanggil APIM, seperti lewat satu pintu pemeriksaan. APIM memeriksa key dan aturan, lalu meneruskan request ke backend yang sudah dipilih.</p>
+    <p><strong>Backend APIM</strong> di lab ini adalah Foundry. <strong>Backend aplikasi</strong> adalah server Node.js yang menyimpan key. Keduanya bukan komponen yang sama.</p>
+    <p>APIM bukan tempat menjalankan model dan bukan tempat menyimpan log workbook.</p>
+  </aside>
+  <aside class="help-popover" id="help-product" popover="auto" role="dialog" aria-labelledby="help-product-title">
+    <div class="help-heading"><h2 id="help-product-title">API, product, subscription</h2><button class="help-close" type="button" popovertarget="help-product" popovertargetaction="hide">Tutup</button></div>
+    <p><strong>API</strong> berisi alamat dan operasi, misalnya POST chat. <strong>Product</strong> mengelompokkan API yang boleh diakses. <strong>Subscription APIM</strong> memberi key untuk paket akses itu.</p>
+    <p>Subscription APIM bukan subscription Azure untuk pembayaran. Pada pola lab ini, satu product berisi satu API dan policy juga mengunci satu ID subscription tertentu.</p>
+    <p>Kuota 5 panggilan/menit dan 100 total berasal dari policy product demo, bukan batas bawaan semua layanan APIM.</p>
+  </aside>
+  <aside class="help-popover" id="help-identity" popover="auto" role="dialog" aria-labelledby="help-identity-title">
+    <div class="help-heading"><h2 id="help-identity-title">APIM login sebagai dirinya sendiri</h2><button class="help-close" type="button" popovertarget="help-identity" popovertargetaction="hide">Tutup</button></div>
+    <p><strong>Managed Identity</strong> adalah identitas APIM yang dikelola Azure. Aktifkan System assigned, lalu berikan role Foundry User pada project tujuan.</p>
+    <p>Policy membuang key/header autentikasi client sebelum memanggil Foundry, lalu meminta token untuk <code>https://ai.azure.com</code>. Key Foundry tidak diperlukan pada pola ini.</p>
+    <p>Login Entra di UI, key subscription APIM, dan identity APIM adalah tiga hal berbeda. Foundry melihat identity APIM, bukan otomatis pengguna browser.</p>
+  </aside>
+  <aside class="help-popover" id="help-backend" popover="auto" role="dialog" aria-labelledby="help-backend-title">
+    <div class="help-heading"><h2 id="help-backend-title">Policy langsung atau menu Backends?</h2><button class="help-close" type="button" popovertarget="help-backend" popovertargetaction="hide">Tutup</button></div>
+    <p>Lab ini memakai <code>set-backend-service base-url="..."</code> langsung di inbound policy. Jadi <strong>tidak membuat resource bernama backend</strong> di menu Backends, dan kolom Web service URL pada form API boleh kosong.</p>
+    <p>Untuk backend yang dipakai banyak API, menu Backends bisa menjadi konfigurasi bersama, lalu policy merujuk <code>backend-id</code>. Itu alternatif, bukan langkah tambahan yang sudah diterapkan lab ini.</p>
+    <p>Policy global menyediakan <code>forward-request</code>; policy rute mewarisinya lewat <code>&lt;base /&gt;</code>. Jangan menghapus policy lengkap saat mengikuti potongan contoh.</p>
+    <pre><code>&lt;set-backend-service
+  base-url="https://foundrydemoresourcedigi1.services.ai.azure.com" /&gt;
+&lt;rewrite-uri
+  template="/api/projects/pamadigiproject1_proj1/openai/v1/chat/completions"
+  copy-unmatched-params="false" /&gt;
+&lt;authentication-managed-identity resource="https://ai.azure.com" /&gt;</code></pre>
+    <p>Host + path menentukan backend; field <code>model</code> di policy menetapkan deployment. Potongan ini bukan policy siap tempel. <a href="../infra/apim-lab/route-policy.xml">Baca policy lengkap</a>.</p>
+  </aside>
+  <aside class="help-popover" id="help-newroute" popover="auto" role="dialog" aria-labelledby="help-newroute-title">
+    <div class="help-heading"><h2 id="help-newroute-title">Jika benar-benar menambah rute keempat</h2><button class="help-close" type="button" popovertarget="help-newroute" popovertargetaction="hide">Tutup</button></div>
+    <ul>
+      <li><a href="../infra/apim-lab/profiles.json">profiles.json</a>: tambah <code>id</code>, <code>label</code>, <code>path</code>, <code>project</code>, dan <code>deployment</code>. Bicep memakai profil untuk membuat API/product/subscription dan role project; perubahan file tetap perlu deployment.</li>
+      <li><a href="../apps/apim-chat-lab/server.mjs">server.mjs</a>: allow-list URL hanya menerima <code>main</code>, <code>project-x</code>, dan <code>project-y</code>. Rute baru memerlukan pembaruan validasi dan tesnya.</li>
+      <li><a href="../infra/apim-lab/lab.ps1">lab.ps1</a>: validasi key masih mengharuskan tepat tiga key unik.</li>
+      <li><a href="../queries/apim-foundry-report.kql">KQL laporan</a>: tambah <code>Rute in (...)</code> dan pemetaan <code>Aplikasi</code>. Jika resource berubah, cek <code>AppInsights</code>, <code>FoundryAccount</code>, dan filter <code>AppRoleName</code>, lalu perbarui query workbook.</li>
+    </ul>
+    <p>Jika membuat Web App baru, sesuaikan <code>APP_ORIGIN</code> dan login Entra. <code>APP_LABEL</code>, <code>FOUNDRY_PROJECT</code>, dan <code>DEPLOYMENT_NAME</code> adalah label UI; tujuan sebenarnya tetap diputuskan policy APIM.</p>
+    <p>Ini panduan perubahan, bukan klaim bahwa rute keempat sudah didukung atau dibuat.</p>
+  </aside>
+  <aside class="help-popover" id="help-workspace" popover="auto" role="dialog" aria-labelledby="help-workspace-title">
+    <div class="help-heading"><h2 id="help-workspace-title">Pengirim, penyimpanan, dan tampilan</h2><button class="help-close" type="button" popovertarget="help-workspace" popovertargetaction="hide">Tutup</button></div>
+    <p><strong>APIM</strong> melayani request. <strong>Application Insights</strong> menerima telemetry APIM; pada lab ini datanya disimpan di LAW yang ditautkan.</p>
+    <p><strong>Log Analytics workspace</strong> menyimpan tabel log. <strong>Workbook</strong> menyimpan susunan visual dan query, lalu membaca log; ia tidak menyalin seluruh isi workspace.</p>
+    <dl><div><dt>LAW utama — APIM + Foundry</dt><dd><code>log-foundrydemoresourcedigi1-be5que3gzucd6</code></dd></div><div><dt>LAW kedua — data generator workbook lama</dt><dd><code>law-pamadigi-usage-432xhddjb3emq</code></dd></div></dl>
+    <p>Resource group yang sama belum tentu berarti workspace yang sama. Nama workspace pada App Insights dan diagnostic settings harus dicocokkan. LAW ini juga bukan fitur <em>workspaces</em> di dalam APIM.</p>
+    <p>Log masuk secara asinkron. Jika belum muncul, periksa waktu, kategori, tujuan log, dan izin; jangan langsung mengartikannya sebagai nol penggunaan.</p>
+  </aside>
+  <aside class="help-popover" id="help-tokens" popover="auto" role="dialog" aria-labelledby="help-tokens-title">
+    <div class="help-heading"><h2 id="help-tokens-title">Bandingkan request yang sama</h2><button class="help-close" type="button" popovertarget="help-tokens" popovertargetaction="hide">Tutup</button></div>
+    <p>Cocokkan <code>IdFoundry</code> baru dengan <code>CorrelationId</code> lama pada rentang waktu yang sama. Bandingkan input dan output per request, bukan langsung total seluruh panel.</p>
+    <p>Ringkasan workbook lama memakai input + output + cache. Cache merupakan bagian input, sehingga total ringkasan lama bisa lebih besar. Materi ini menandai keterbatasan tersebut; query workbook lama tidak diam-diam diubah.</p>
+    <p>Workbook baru memilih satu sumber token: native bila cocok, atau usage HTTP bila tersedia. Tidak ada token berarti tidak tersedia, bukan otomatis nol. Estimasi biaya tetap terpisah dari billing Azure.</p>
+  </aside>
+  <dialog id="shot-viewer" class="shot-dialog" aria-labelledby="shot-title" aria-describedby="shot-context">
+    <header class="shot-header">
+      <div><p id="shot-context" class="shot-context"></p><h2 id="shot-title"></h2></div>
+      <button id="shot-close" class="shot-control shot-close" type="button" autofocus><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>Tutup</button>
+    </header>
+    <div class="shot-body">
+      <div id="shot-stage" class="shot-stage" tabindex="0" role="region" aria-label="Area gambar. Saat diperbesar, gulir untuk melihat bagian lain.">
+        <div class="shot-rail" hidden><div class="shot-frame"><img alt="" draggable="false"></div></div>
+        <p class="shot-message" hidden></p>
+      </div>
+      <aside class="shot-notes" aria-labelledby="shot-notes-title">
+        <section id="shot-location" class="shot-location" aria-labelledby="shot-location-title" hidden>
+          <h3 id="shot-location-title">Lokasi menu</h3>
+          <p class="shot-resource-label">Mulai dari</p>
+          <a id="shot-resource" target="_blank" rel="noopener noreferrer"></a>
+          <ol id="shot-menu" class="shot-menu"></ol>
+          <h4>Bagian layar yang dituju</h4><p id="shot-where"></p>
+          <h4>Yang perlu terlihat</h4><p id="shot-expected"></p>
+          <details class="shot-evidence"><summary>Sumber &amp; tanggal menu</summary><p id="shot-evidence"></p><a id="shot-reference" target="_blank" rel="noopener noreferrer">Microsoft Learn</a><a id="shot-implementation" hidden>Implementasi lab</a></details>
+        </section>
+        <h3 id="shot-notes-title">Penanda pada gambar</h3><p id="shot-caption" class="shot-caption"></p><ol id="shot-notes" hidden></ol>
+      </aside>
+    </div>
+    <div class="shot-footer">
+      <p class="shot-tip"><kbd>Esc</kbd> tutup · Tombol panah pindah gambar</p>
+      <div class="shot-controls" role="group" aria-label="Kontrol gambar">
+        <button id="shot-prev" class="shot-control" type="button" aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>Sebelumnya</button>
+        <button id="shot-zoom" class="shot-control" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5M7 10h6m-3-3v6"/></svg><span>Perbesar</span></button>
+        <button id="shot-next" class="shot-control" type="button" aria-disabled="true">Berikutnya<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <p id="shot-status" class="shot-sr-only" role="status" aria-atomic="true"></p>
+  </dialog>
+  <template id="shot-icons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6m0-6-6 6M10 20H4v-6m0 6 6-6"/></svg></template>
+</body>
+</html>

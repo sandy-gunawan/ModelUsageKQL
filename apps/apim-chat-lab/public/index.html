@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PAMA Digi | AI Gateway Lab</title>
+  <link rel="stylesheet" href="/app.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#isi">Ke bagian utama</a>
+  <header class="masthead">
+    <span class="brand">PAMA Digi <span> / AI Gateway Lab</span></span>
+    <span id="state" class="pill" role="status">Memeriksa koneksi</span>
+  </header>
+  <main id="isi">
+    <p class="eyebrow">01 &nbsp; / &nbsp; UJI SATU REQUEST</p>
+    <h1 id="app-name">Chat lewat APIM</h1>
+    <p class="intro">Kirim pesan pendek. Web App memakai key miliknya untuk masuk ke APIM. APIM memanggil Foundry tanpa membagikan key atau token ke browser.</p>
+    <dl class="routing">
+      <div><dt>Base URL APIM</dt><dd id="endpoint">Belum tersambung</dd></div>
+      <div><dt>Project Foundry</dt><dd id="project">Belum diketahui</dd></div>
+      <div><dt>Deployment yang dipilih APIM</dt><dd id="deployment">Belum diketahui</dd></div>
+    </dl>
+    <div class="deck">
+      <section class="panel" aria-labelledby="input-title">
+        <p class="eyebrow">REQUEST</p>
+        <h2 id="input-title">Tulis pesan</h2>
+        <form id="chat">
+          <label for="question">Pesan ke model</label>
+          <textarea id="question" name="question" rows="5" maxlength="700" required aria-describedby="hint">Balas satu kalimat: uji koneksi PAMA Digi berhasil.</textarea>
+          <p class="hint" id="hint">Pakai data fiktif, maksimal 700 karakter.</p>
+          <button type="submit" id="send" disabled>Kirim ke Foundry</button>
+        </form>
+      </section>
+      <section class="panel" aria-labelledby="output-title">
+        <p class="eyebrow">RESPONSE</p>
+        <h2 id="output-title">Lihat hasil</h2>
+        <p id="result-status" class="result-status" role="status">Belum ada request.</p>
+        <p id="answer" class="answer" hidden></p>
+        <dl class="stats">
+          <div><dt>Input</dt><dd id="input-tokens">–</dd></div>
+          <div><dt>Output</dt><dd id="output-tokens">–</dd></div>
+          <div><dt>Total token</dt><dd id="total-tokens">–</dd></div>
+          <div><dt>Waktu Web App → APIM</dt><dd id="duration">–</dd></div>
+          <div><dt>ID request APIM</dt><dd id="request-id">–</dd></div>
+        </dl>
+      </section>
+    </div>
+    <p class="footnote">Jumlah token berasal dari respons API. Gunakan ID request APIM untuk mencarinya di Log Analytics.</p>
+    <noscript>Aktifkan JavaScript untuk menjalankan demo.</noscript>
+  </main>
+</body>
+</html>

@@ -1,0 +1,26 @@
+// Workbook lama: PAMA DIGI - Verified Foundry Usage (Direct), panel Request explorer.
+// Snapshot definisi Azure: 20 November 2026. Tidak mengubah workbook Azure.
+// Parameter {TimeRange} diganti dengan Mulai/Selesai agar bisa dijalankan di Logs.
+// Pilih LAW log-foundrydemoresourcedigi1-be5que3gzucd6 sebagai scope native.
+// Memerlukan akses LAW kedua: law-pamadigi-usage-432xhddjb3emq.
+// ID LAW kedua dianonimkan; ganti GUID placeholder dengan workspace ID sendiri.
+let Mulai = ago(24h);
+let Selesai = now();
+let Native = AzureDiagnostics
+| where TimeGenerated between (Mulai .. Selesai)
+| where Category == 'AzureOpenAIRequestUsage'
+| extend p=todynamic(properties_s)
+| project TimeGenerated, Source='Foundry diagnostic', Resource=tostring(Resource), Project='unknown',
+          Model=tostring(p.modelName), Deployment=tostring(p.modelDeploymentName),
+          Caller='unknown', InputTokens=toreal(p.promptTokens[0]), OutputTokens=toreal(p.generatedTokens[0]),
+          CachedTokens=toreal(p.cachedTokens[0]), LatencyMs=toreal(p.timeToLastTokenMs),
+          CorrelationId=tostring(CorrelationId);
+let Direct = workspace('00000000-0000-0000-0000-000000000001').FoundryDemoRequests_CL
+| where TimeGenerated between (Mulai .. Selesai)
+| project TimeGenerated, Source='Direct custom ingestion', Resource='fd-pamadigi-usage-432xhddjb3emq', Project,
+          Model, Deployment, Caller='unknown', InputTokens=toreal(InputTokens), OutputTokens=toreal(OutputTokens),
+          CachedTokens=0.0, LatencyMs=toreal(LatencyMs), CorrelationId=tostring(ApiRequestId);
+union Native, Direct
+| project TimeGenerated, Source, Resource, Project, Model, Deployment, Caller, InputTokens, OutputTokens, CachedTokens, LatencyMs, CorrelationId
+| order by TimeGenerated desc
+| take 100

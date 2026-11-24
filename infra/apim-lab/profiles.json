@@ -1,0 +1,23 @@
+[
+  {
+    "id": "main",
+    "label": "Main",
+    "path": "main",
+    "project": "rg_demo_pamadigi-proj1",
+    "deployment": "gpt-5.6-sol"
+  },
+  {
+    "id": "x",
+    "label": "Project X",
+    "path": "project-x",
+    "project": "pamadigiproject1_proj1",
+    "deployment": "modelprojectX"
+  },
+  {
+    "id": "y",
+    "label": "Project Y",
+    "path": "project-y",
+    "project": "pamadigiproject1_proj2",
+    "deployment": "modelprojectY"
+  }
+]

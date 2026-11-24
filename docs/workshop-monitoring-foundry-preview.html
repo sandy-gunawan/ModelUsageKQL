@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foundry Usage Lab | Setup monitoring Foundry</title>
+  <link rel="stylesheet" href="assets/workshop-fonts.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f7fc; --surface: #fff; --ink: #14213b; --muted: #465672;
+      --line: #d6e0f0; --blue: #2246ae; --soft-blue: #edf2ff; --navy: #101f40;
+      --mint: #78ebba; --radius: 16px;
+      --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+      --mono: "IBM Plex Mono", Consolas, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 1rem/1.55 var(--sans); }
+    h1, h2, h3, h4, p, figure, ol, ul, dl, dd { margin: 0; }
+    h2, h3 { line-height: 1.18; letter-spacing: -.025em; }
+    a { color: var(--blue); text-underline-offset: .22em; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button, .action { touch-action: manipulation; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    code { font: .9em/1.5 var(--mono); overflow-wrap: anywhere; }
+    .icon { width: 1.25rem; height: 1.25rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .shell { width: min(100% - clamp(2rem, 6vw, 5rem), 76rem); margin-inline: auto; }
+    .skip { position: absolute; z-index: 1; top: .5rem; left: .5rem; background: var(--surface); padding: .75rem; transform: translateY(-180%); }
+    .skip:focus { transform: none; }
+    .masthead { background: var(--surface); border-bottom: 1px solid var(--line); }
+    .masthead .shell, .brand, .action, .section-head, .capture-tools, .zoom-head { display: flex; align-items: center; gap: .75rem; }
+    .masthead .shell { min-height: 68px; justify-content: space-between; padding-block: .4rem; }
+    .brand { font-weight: 600; line-height: 1.2; }
+    .brand-mark { width: 38px; height: 38px; flex: none; display: grid; place-items: center; color: white; background: var(--blue); border-radius: 10px; }
+    .action { min-height: 44px; justify-content: center; width: fit-content; font-weight: 600; }
+    .action .icon { width: 1rem; height: 1rem; }
+    .kicker { color: var(--blue); font: 600 .76rem/1.4 var(--mono); letter-spacing: .095em; text-transform: uppercase; }
+    h1 { margin-block: .35rem .55rem; font-size: clamp(1.8rem, 4vw, 3rem); line-height: 1.08; letter-spacing: -.045em; font-weight: 600; }
+    h1 span { color: var(--blue); }
+    .intro { max-width: 55ch; color: var(--muted); }
+    .jump { margin-top: .7rem; padding-inline: .9rem; border-radius: 8px; background: var(--blue); color: white; text-decoration: none; }
+    .jump:hover { background: var(--navy); }
+    .section-head { justify-content: space-between; flex-wrap: wrap; margin-bottom: .85rem; }
+    .section-head h2 { font-size: clamp(1.375rem, 2.7vw, 1.8rem); }
+    .pill { border: 1px solid var(--line); border-radius: 99px; padding: .25rem .65rem; color: var(--muted); background: var(--surface); font-size: .82rem; }
+    .topic { margin-bottom: clamp(1.5rem, 3.5vw, 2.6rem); }
+    .topic .section-head .kicker, #alur .section-head .kicker { margin-bottom: .28rem; }
+    .section-lead { max-width: 75ch; color: var(--muted); margin: -.25rem 0 1rem; }
+    .sheet { min-width: 0; padding: clamp(1rem, 2.8vw, 1.5rem); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+    .setup-overview { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: clamp(.85rem, 3vw, 2.25rem); margin-top: clamp(.8rem, 2.5vw, 1.75rem); padding: clamp(.75rem, 2vw, 1.4rem); }
+    .setup-list { max-width: 60ch; padding-inline-start: 1.4rem; margin-block: .7rem; line-height: 1.45; }
+    .setup-list li + li { margin-top: .32rem; }
+    .setup-list li::marker { color: var(--blue); font-family: var(--mono); font-weight: 600; }
+    .setup-note { color: var(--muted); font-size: .9rem; }
+    .setup-media { width: 100%; max-width: 28rem; min-width: 0; justify-self: center; }
+    .setup-diagram img { display: block; width: 100%; height: auto; }
+    .diagram-source { display: flex; justify-content: flex-end; font-size: .83rem; }
+    .diagram-source .action { min-height: 36px; }
+    .setup-shots { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+    .shot-preview { display: grid; height: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); text-decoration: none; }
+    .shot-preview:hover { border-color: var(--blue); background: var(--soft-blue); }
+    .shot-preview img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; object-fit: cover; }
+    .shot-preview[data-preview-shot="Diagnostic settings"] img { object-position: center 42%; }
+    .shot-preview span { display: flex; align-items: center; gap: .28rem; padding: .3rem .45rem; font-size: .875rem; font-weight: 600; line-height: 1.25; }
+    .shot-preview .icon { width: .95rem; height: .95rem; }
+    .price-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: .75rem; }
+    .price-grid h3 { font-size: 1.1rem; margin-block: .28rem .65rem; }
+    .measure { font-size: clamp(1.6rem, 3.2vw, 2.4rem); font-weight: 600; line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
+    .measure small { color: var(--muted); font-size: .95rem; font-weight: 500; letter-spacing: 0; }
+    .cost-meta { margin-block: .6rem .8rem; color: var(--muted); font-size: .9rem; }
+    .formula { display: grid; gap: .2rem; padding: .7rem .8rem; margin-block: .65rem; border-radius: 8px; background: var(--soft-blue); overflow-wrap: anywhere; }
+    .evidence { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+    .evidence h3 { margin-block: .25rem .4rem; font-size: 1.08rem; }
+    .evidence p:not(.kicker) { color: var(--muted); font-size: .95rem; }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-bottom: .75rem; }
+    .step { display: flex; align-items: center; text-align: left; gap: .72rem; min-height: 60px; padding: .55rem .85rem; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; line-height: 1.2; }
+    .step, .subtle { transition: background-color 160ms ease, border-color 160ms ease; }
+    .step:hover, .subtle:hover { background: var(--soft-blue); }
+    .step[aria-selected="true"] { border-color: var(--blue); background: var(--soft-blue); box-shadow: inset 0 -3px var(--blue); }
+    .step strong { font-weight: 600; }
+    .step small { display: block; color: var(--muted); font-size: .84rem; margin-top: .16rem; }
+    .step-num { min-width: 2rem; min-height: 2rem; display: grid; place-items: center; border-radius: 8px; background: var(--paper); color: var(--muted); font: 600 .8rem/1 var(--mono); }
+    .step[aria-selected="true"] .step-num { background: var(--blue); color: white; }
+    .panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, .42fr); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 10px 24px #172b4910; }
+    .panel:not([hidden]) + .panel:not([hidden]) { margin-top: .75rem; }
+    .visual { min-width: 0; padding: clamp(.85rem, 2vw, 1.35rem); }
+    .capture-tools { justify-content: space-between; flex-wrap: wrap; margin-bottom: .75rem; }
+    .capture-tools h3 { font-size: 1.1rem; margin-top: .2rem; }
+    .subtle { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 44px; padding: .37rem .75rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; font-weight: 600; text-align: left; }
+    .subtle[aria-pressed="true"] { border-color: var(--blue); background: var(--soft-blue); color: var(--blue); }
+    .capture-tray { display: grid; justify-items: center; padding: clamp(.38rem, 1vw, .65rem); border: 1px solid var(--line); border-radius: 10px; background: #ebf0fa; }
+    .capture-image { position: relative; width: 100%; }
+    [data-capture="diagnostic"] .capture-image { max-width: 33rem; }
+    .capture-image img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+    .region { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); border: 2px solid var(--blue); border-radius: 4px; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2246ae35; pointer-events: none; }
+    .region::before { content: var(--marker); position: absolute; inset-inline-end: calc(100% + .25rem); top: 50%; transform: translateY(-50%); }
+    .region::before, .marker { display: grid; place-items: center; flex: none; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--blue); color: white; box-shadow: 0 0 0 2px white; font: 600 .75rem/1 var(--mono); }
+    [data-focus="add"] { --x: 29%; --y: 36.3%; --w: 16%; --h: 4%; --marker: "1"; }
+    [data-focus="categories"] { --x: 29%; --y: 46.5%; --w: 19.5%; --h: 5%; --marker: "2"; }
+    [data-focus="run"] { --x: 18.4%; --y: 39.2%; --w: 6.8%; --h: 4.4%; --marker: "1"; }
+    [data-focus="grid"] { --x: 17.8%; --y: 79%; --w: 80.6%; --h: 10.1%; --marker: "2"; }
+    .capture-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .spot-caption { min-height: 2lh; margin-top: .45rem; color: var(--muted); font-size: .9rem; }
+    .lab-proof { min-width: 0; margin-top: .85rem; padding: .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+    .lab-proof h4 { margin-block: .2rem .35rem; font-size: 1.05rem; }
+    .proof-meta { margin-block: .25rem .55rem; color: var(--muted); font-size: .875rem; }
+    .proof-settings { display: grid; gap: .35rem; font-size: .9rem; }
+    .proof-settings div { display: flex; flex-wrap: wrap; gap: .12rem .45rem; }
+    .proof-settings dt { font-weight: 600; }
+    .proof-scroll { overflow-x: auto; }
+    .proof-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .proof-table th, .proof-table td { padding: .36rem .45rem; border-bottom: 1px solid var(--line); text-align: left; }
+    .proof-table thead { background: var(--soft-blue); }
+    .proof-table .numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .guide { min-width: 0; padding: clamp(.95rem, 2vw, 1.35rem); background: #f1f5fc; border-left: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) 0; }
+    .guide h3 { margin-bottom: .6rem; font-size: 1.125rem; }
+    .path { padding: .64rem .7rem; margin-bottom: .8rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; font-weight: 600; }
+    .guide ol { padding-left: 1.4rem; }
+    .guide li + li { margin-top: .55rem; }
+    .guide > p + p { margin-top: .6rem; }
+    .note { margin-top: 1rem; padding: .7rem .8rem; background: var(--surface); border-left: 3px solid var(--blue); font-size: .9rem; }
+    .code-board { margin: 0; border-radius: 10px; padding: 1.1rem; background: var(--navy); color: #f4f7ff; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
+    .code-board .kw { color: #a7c7ff; }
+    .code-board .literal { color: var(--mint); }
+    .log-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: .75rem; }
+    .log-types div { padding: .72rem .8rem; border: 1px solid var(--line); border-radius: 8px; }
+    .log-types dt { font-weight: 600; }
+    .log-types dd { margin-top: .15rem; color: var(--muted); font-size: .88rem; }
+    .meter { display: flex; height: .5rem; overflow: hidden; border-radius: 99px; background: #127553; margin-block: .7rem .48rem; }
+    .meter span { width: 97.64%; background: var(--blue); }
+    .caption-list { display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .82rem; }
+    .caption-list div { display: flex; gap: .28rem; }
+    .caption-list dd { font-weight: 600; }
+    .footer { margin-top: 1.35rem; margin-bottom: 2rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem 1rem; color: var(--muted); font-size: .92rem; }
+    .zoom { inset: 0; width: min(calc(100% - 1.5rem), 74rem); max-width: none; max-height: 94dvh; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+    .zoom::backdrop { background: #07132ad9; }
+    .zoom-head { justify-content: space-between; flex-wrap: wrap; padding: .72rem .9rem; border-bottom: 1px solid var(--line); }
+    .zoom-head h2 { font-size: 1.12rem; }
+    .zoom-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .zoom-body { overflow: auto; max-height: 72dvh; padding: .65rem; background: var(--paper); }
+    .zoom-body:focus-visible { outline-offset: -3px; }
+    .zoom-body img { display: block; max-width: 100%; height: auto; }
+    .zoom-body.full img { max-width: none; }
+    @media (max-width: 57rem) {
+      .setup-overview { grid-template-columns: minmax(0, 1fr); }
+      .panel { grid-template-columns: minmax(0, 1fr); }
+      .guide { border-left: 0; border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius); }
+    }
+    @media (max-width: 42rem) {
+      .price-grid, .evidence { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 30rem) {
+      .brand-mark { display: none; }
+      .masthead .shell { min-height: 56px; }
+      .masthead .action { font-size: .9rem; gap: .25rem; }
+      .step { padding: .45rem .27rem .55rem; flex-direction: column; justify-content: center; text-align: center; gap: .25rem; font-size: .9rem; }
+      .step small { display: none; }
+      .step-num { min-height: 1.5rem; min-width: 1.5rem; }
+      .setup-diagram { margin-inline: -.25rem; }
+      .log-types { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-flow" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v5.5a2 2 0 0 0 2 2H14M14 6.5h7m-3.5-3.5v7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4m-12-9.5h5m-2.5-2.5v5"/></symbol>
+  </svg>
+  <a class="skip" href="#alur">Lewati ke langkah praktik</a>
+  <header class="masthead">
+    <div class="shell">
+      <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-flow"/></svg></span> Foundry Usage Lab</div>
+      <a class="action" href="workshop-monitoring-foundry.html">Workshop lengkap <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="topic sheet setup-overview" id="arsitektur" aria-labelledby="judul">
+      <div>
+        <p class="kicker">Azure Monitor / Ringkasan setup</p>
+        <h1 id="judul">Setup monitoring <span>Foundry</span></h1>
+        <p class="intro">Pusatkan log pemakaian model dan trace di <strong>satu Log Analytics workspace (LAW)</strong>.</p>
+        <ol class="setup-list">
+          <li><strong>Pilih satu LAW pusat.</strong> Gunakan workspace yang sudah ada.</li>
+          <li><strong>Hubungkan project ke satu Application Insights.</strong> Tautkan resource Insights itu ke LAW pusat.</li>
+          <li><strong>Atur Diagnostic settings di tiap resource Foundry.</strong> Kirim <code>AzureOpenAIRequestUsage</code> dan <code>RequestResponse</code> ke LAW yang sama.</li>
+          <li><strong>Jalankan <a href="../queries/foundry-native-usage-cost.kql">KQL lab</a> di LAW &rarr; Logs</strong> setelah ada trafik. Pakai query yang sama di Workbook untuk menampilkan tabel.</li>
+        </ol>
+        <p class="setup-note">Application Insights untuk tracing. Query token tetap membaca log dari Diagnostic settings.</p>
+        <a class="action jump" href="#alur">Langsung ke praktik <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
+      <div class="setup-media">
+        <figure class="setup-diagram">
+          <img src="diagrams/foundry-setup-ringkas.png" width="926" height="602" alt="Project Foundry mengirim trace lewat satu Application Insights. Tiap resource Foundry mengirim log pemakaian lewat Diagnostic settings. Keduanya masuk ke satu Log Analytics workspace, lalu Logs dan Workbook membacanya dengan KQL.">
+          <figcaption class="diagram-source"><a class="action" href="diagrams/foundry-setup-ringkas.drawio">Sumber diagram Draw.io</a></figcaption>
+        </figure>
+        <ul class="setup-shots" aria-label="Screenshot portal dari lab">
+          <li><a class="shot-preview" href="assets/foundry-diagnostic-settings.png" data-preview-shot="Diagnostic settings" aria-label="Perbesar cuplikan Diagnostic settings">
+            <img src="assets/foundry-diagnostic-settings.png" width="969" height="768" alt="Layar awal Diagnostic settings dengan tautan Add diagnostic setting dan daftar kategori log.">
+            <span><svg class="icon" aria-hidden="true"><use href="#i-zoom"/></svg>Diagnostic settings</span>
+          </a></li>
+          <li><a class="shot-preview" href="assets/foundry-workbook-log-query.png" data-preview-shot="Workbook (cuplikan historis)" aria-label="Perbesar cuplikan historis Workbook">
+            <img src="assets/foundry-workbook-log-query.png" width="1837" height="768" alt="Editor Workbook dengan tombol Run Query dan tabel hasil dari query lama.">
+            <span><svg class="icon" aria-hidden="true"><use href="#i-zoom"/></svg>Workbook (historis)</span>
+          </a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="topic" id="angka" aria-labelledby="angka-title">
+      <div class="section-head">
+        <div><p class="kicker">Angka dan pricing</p><h2 id="angka-title">Dari 66.910 token ke contoh biaya</h2></div>
+      </div>
+      <div class="price-grid">
+        <article class="sheet" aria-labelledby="tercatat-title">
+          <p class="kicker">Tercatat di screenshot lab</p>
+          <h3 id="tercatat-title">Token pada satu baris Workbook</h3>
+          <p class="measure">66.910 <small>token total</small></p>
+          <div class="meter" aria-hidden="true"><span></span></div>
+          <dl class="caption-list"><div><dt>Input</dt><dd>65.333</dd></div><div><dt>Output</dt><dd>1.577</dd></div></dl>
+          <p class="cost-meta">Cuplikan historis 18 November 2026 untuk <code>gpt-6-luna</code>. Ada 8 catatan penggunaan, bukan bukti 8 request unik. Lihat grid aslinya di tahap <strong>Baca hasil</strong>.</p>
+        </article>
+        <article class="sheet" aria-labelledby="simulasi-title">
+          <p class="kicker">Simulasi &middot; Bukan tagihan</p>
+          <h3 id="simulasi-title">Jika semua input baru dan konteks Short</h3>
+          <p>Tarif per 1 juta token: <strong>USD 0,10</strong> untuk input baru dan <strong>USD 0,50</strong> untuk output.</p>
+          <div class="formula">
+            <span>(65.333 &times; 0,10 + 1.577 &times; 0,50) &divide; 1.000.000</span>
+            <strong>= USD 0,00732180</strong>
+          </div>
+          <p class="cost-meta">Sumber: <a href="../queries/foundry-native-usage-cost.kql"><code>PriceInput</code> pada KQL lab</a>, snapshot tarif publik Azure 18 November 2026. <code>gpt-6-luna</code> versi <code>2026-09-22</code>, Global Standard, East US, kelas <code>Short</code>.</p>
+          <p>Screenshot lama tidak menunjukkan pembagian cache. KQL terbaru memberi tarif terpisah untuk membaca atau menulis cache dan konteks panjang. Jika tarif tidak cocok atau belum tersedia, baca <code>StatusHarga</code>; estimasi kosong bukan nol.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="topic" id="alur" aria-labelledby="alur-title" tabindex="-1">
+      <div class="section-head">
+        <div><p class="kicker">Praktik</p><h2 id="alur-title">Pilih tahap, lihat buktinya</h2></div>
+        <span class="pill">Offline</span>
+      </div>
+      <div class="steps" role="tablist" aria-label="Tahap monitoring" hidden>
+        <button class="step" type="button" role="tab" id="step-collect" aria-controls="panel-collect" aria-selected="true"><span class="step-num" aria-hidden="true">01</span><span><strong>Kirim log</strong><small>Diagnostic settings</small></span></button>
+        <button class="step" type="button" role="tab" id="step-check" aria-controls="panel-check" aria-selected="false" tabindex="-1"><span class="step-num" aria-hidden="true">02</span><span><strong>Cek data</strong><small>Log Analytics</small></span></button>
+        <button class="step" type="button" role="tab" id="step-read" aria-controls="panel-read" aria-selected="false" tabindex="-1"><span class="step-num" aria-hidden="true">03</span><span><strong>Baca hasil</strong><small>Workbook</small></span></button>
+      </div>
+      <noscript><p class="section-lead">Semua tahap tampil berurutan. Aktifkan JavaScript untuk memilih sorotan dan memperbesar screenshot di halaman ini.</p></noscript>
+
+      <div class="panel" role="tabpanel" aria-labelledby="step-collect" id="panel-collect" tabindex="0">
+        <div class="visual" data-capture="diagnostic" data-focus="add">
+          <div class="capture-tools">
+            <div><p class="kicker">Portal Azure &middot; Screenshot lab</p><h3>Diagnostic settings</h3></div>
+            <button type="button" class="subtle" data-open-shot aria-haspopup="dialog" aria-label="Perbesar screenshot Diagnostic settings" hidden><svg class="icon" aria-hidden="true"><use href="#i-zoom"/></svg>Perbesar</button>
+          </div>
+          <figure>
+            <div class="capture-tray"><div class="capture-image">
+              <img src="assets/foundry-diagnostic-settings.png" width="969" height="768" alt="Diagnostic settings pada resource Foundry. Tombol Add diagnostic setting berada di atas daftar kategori log.">
+              <span class="region" aria-hidden="true"></span>
+            </div></div>
+            <div class="capture-controls" role="group" aria-label="Sorotan pada screenshot Diagnostic settings" hidden>
+              <button type="button" class="subtle" aria-pressed="true" data-region="add" data-caption="1. Tombol ini membuka form untuk memilih kategori dan tujuan log. Formnya belum terlihat di cuplikan ini."><span class="marker" aria-hidden="true">1</span>Tombol Add</button>
+              <button type="button" class="subtle" aria-pressed="false" data-region="categories" data-caption="2. Layar ini hanya mendaftar kategorinya: Request and Response Logs dan Azure OpenAI Request Usage. Belum terlihat apakah keduanya dipilih."><span class="marker" aria-hidden="true">2</span>Kategori log</button>
+            </div>
+            <figcaption class="spot-caption" aria-live="polite">1. Tombol ini membuka form untuk memilih kategori dan tujuan log. Formnya belum terlihat di cuplikan ini.</figcaption>
+          </figure>
+          <section class="lab-proof" id="bukti-setting" aria-labelledby="bukti-setting-title">
+            <p class="kicker">Konfigurasi terbaca dari Azure &middot; Bukan screenshot portal</p>
+            <h4 id="bukti-setting-title">Dua kategori aktif dan menuju workspace yang sama</h4>
+            <p class="proof-meta">Dicek 19 November 2026 lewat <code>az monitor diagnostic-settings list</code>.</p>
+            <dl class="proof-settings">
+              <div><dt>Resource:</dt><dd><code>foundrydemoresourcedigi2</code></dd></div>
+              <div><dt>Tujuan:</dt><dd><code>log-foundrydemoresourcedigi1-be5que3gzucd6</code></dd></div>
+              <div><dt><code>AzureOpenAIRequestUsage</code>:</dt><dd>Aktif</dd></div>
+              <div><dt><code>RequestResponse</code>:</dt><dd>Aktif</dd></div>
+            </dl>
+          </section>
+        </div>
+        <aside class="guide">
+          <h3>01. Atur log yang dikirim</h3>
+          <p class="path">Resource Foundry &rarr; Monitoring &rarr; Diagnostic settings</p>
+          <ol>
+            <li>Pilih <strong>Add diagnostic setting</strong> di resource Foundry, bukan di halaman project.</li>
+            <li>Pilih <strong>Azure OpenAI Request Usage</strong> dan <strong>Request and Response Logs</strong>.</li>
+            <li>Pilih <strong>Send to Log Analytics workspace</strong> dan gunakan workspace yang akan dibaca Workbook.</li>
+          </ol>
+          <p class="note">Kalau pengaturan yang sama sudah ada, cek dulu tujuan dan kategorinya sebelum menambah setting baru.</p>
+          <a class="action" href="#bukti">Lihat sumber bukti lab</a>
+        </aside>
+      </div>
+
+      <div class="panel" role="tabpanel" aria-labelledby="step-check" id="panel-check" tabindex="0">
+        <div class="visual">
+          <div class="capture-tools">
+            <div><p class="kicker">Contoh KQL &middot; Bukan screenshot portal</p><h3>Ada log yang masuk?</h3></div>
+          </div>
+          <pre class="code-board"><code>AzureDiagnostics
+<span class="kw">| where</span> TimeGenerated &gt; ago(24h)
+<span class="kw">| where</span> ResourceGroup =~ <span class="literal">"rg_demo_pamadigi"</span>
+<span class="kw">| where</span> ResourceProvider =~ <span class="literal">"MICROSOFT.COGNITIVESERVICES"</span>
+<span class="kw">| where</span> Category <span class="kw">in</span> (
+    <span class="literal">"AzureOpenAIRequestUsage"</span>, <span class="literal">"RequestResponse"</span>
+)
+<span class="kw">| summarize</span> Jumlah = count() <span class="kw">by</span> Category</code></pre>
+          <dl class="log-types">
+            <div><dt><code>AzureOpenAIRequestUsage</code></dt><dd>Catatan token yang dipakai model.</dd></div>
+            <div><dt><code>RequestResponse</code></dt><dd>Konteks request yang bisa dicocokkan, jika tercatat.</dd></div>
+          </dl>
+          <section class="lab-proof" id="bukti-logs" aria-labelledby="bukti-logs-title">
+            <p class="kicker">Hasil dari Log Analytics &middot; Bukan screenshot portal</p>
+            <h4 id="bukti-logs-title">Kedua kategori punya baris log</h4>
+            <p class="proof-meta">Snapshot 18 Nov 10.40 sampai 19 Nov 10.40 WIB (2026), dengan filter resource group lab. Jumlah ini menghitung baris, bukan request unik.</p>
+            <table class="proof-table" aria-labelledby="bukti-logs-title">
+              <thead><tr><th scope="col">Category</th><th scope="col" class="numeric">Jumlah</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>AzureOpenAIRequestUsage</code></th><td class="numeric">20</td></tr>
+                <tr><th scope="row"><code>RequestResponse</code></th><td class="numeric">154</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+        <aside class="guide">
+          <h3>02. Cek sebelum buka Workbook</h3>
+          <p class="path">Log Analytics workspace &rarr; Logs</p>
+          <ol>
+            <li>Pilih workspace yang sama dengan tujuan log di tahap 01.</li>
+            <li>Jalankan contoh KQL setelah ada request ke model. Sesuaikan <code>24h</code> dengan periode trafik.</li>
+            <li>Cek kategori yang muncul. Query ini menghitung <strong>baris log</strong>, bukan jumlah request unik.</li>
+          </ol>
+          <p class="note">Kalau hasil kosong, cek workspace tujuan, rentang waktu, dan apakah log sudah masuk. Jangan langsung menyimpulkan pemakaian nol.</p>
+        </aside>
+      </div>
+
+      <div class="panel" role="tabpanel" aria-labelledby="step-read" id="panel-read" tabindex="0">
+        <div class="visual" data-capture="workbook" data-focus="grid">
+          <div class="capture-tools">
+            <div><p class="kicker">Portal Azure &middot; Cuplikan historis</p><h3>Query di Workbook</h3></div>
+            <button type="button" class="subtle" data-open-shot aria-haspopup="dialog" aria-label="Perbesar screenshot Workbook" hidden><svg class="icon" aria-hidden="true"><use href="#i-zoom"/></svg>Perbesar</button>
+          </div>
+          <figure>
+            <div class="capture-tray"><div class="capture-image">
+              <img src="assets/foundry-workbook-log-query.png" width="1837" height="768" loading="lazy" alt="Editor Workbook dengan tombol Run Query di atas kode dan tabel token di bagian bawah.">
+              <span class="region" aria-hidden="true"></span>
+            </div></div>
+            <div class="capture-controls" role="group" aria-label="Sorotan pada screenshot Workbook" hidden>
+              <button type="button" class="subtle" aria-pressed="false" data-region="run" data-caption="1. Run Query membaca log di workspace, bukan mengirim request ke model."><span class="marker" aria-hidden="true">1</span>Run Query</button>
+              <button type="button" class="subtle" aria-pressed="true" data-region="grid" data-caption="2. Grid historis ini menunjukkan 65.333 token input dan 1.577 token output. Kolom estimasi belum ada di cuplikan ini."><span class="marker" aria-hidden="true">2</span>Grid hasil</button>
+            </div>
+            <figcaption class="spot-caption" aria-live="polite">2. Grid historis ini menunjukkan 65.333 token input dan 1.577 token output. Kolom estimasi belum ada di cuplikan ini.</figcaption>
+          </figure>
+          <section class="lab-proof" id="bukti-grid" aria-labelledby="bukti-grid-title">
+            <p class="kicker">Hasil KQL terbaru dari Azure &middot; Bukan screenshot portal</p>
+            <h4 id="bukti-grid-title">Lima baris dengan total token terbesar</h4>
+            <p class="proof-meta">Snapshot 18 Nov 10.40 sampai 19 Nov 10.40 WIB (2026). Hanya kolom yang diperlukan untuk membaca token dan estimasi yang ditampilkan.</p>
+            <div class="proof-scroll" role="region" aria-label="Tabel hasil KQL, gulir ke samping jika perlu" tabindex="0">
+              <table class="proof-table" aria-labelledby="bukti-grid-title">
+                <thead><tr><th scope="col">ProjectTercatat</th><th scope="col">Model</th><th scope="col" class="numeric">TotalToken</th><th scope="col" class="numeric">EstimasiUSD</th><th scope="col">StatusHarga</th></tr></thead>
+                <tbody>
+                  <tr><td>rg_demo_pamadigi-proj2</td><td>gpt-6-luna</td><td class="numeric">66.910</td><td class="numeric">0,00438621</td><td>Estimasi tersedia</td></tr>
+                  <tr><td>rg_demo_pamadigi-proj1</td><td>gpt-5.6-sol</td><td class="numeric">24.147</td><td class="numeric">0,02665600</td><td>Estimasi tersedia</td></tr>
+                  <tr><td>rg_demo_pamadigi-proj2</td><td>gpt-5.4-mini</td><td class="numeric">8.661</td><td class="numeric">0,00468765</td><td>Estimasi tersedia</td></tr>
+                  <tr><td>pamadigiproject1_proj2</td><td>gpt-5.6-sol</td><td class="numeric">8.639</td><td class="numeric">0,02541440</td><td>Estimasi tersedia</td></tr>
+                  <tr><td>rg_demo_pamadigi-proj1</td><td>gpt-5.6-sol</td><td class="numeric">8.575</td><td class="numeric">0,02496280</td><td>Estimasi tersedia</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="proof-meta"><code>EstimasiUSD</code> berasal dari KQL, bukan tagihan. <a href="#angka">Contoh hitung biaya</a> memakai asumsi input baru dan konteks Short, jadi angkanya berbeda.</p>
+          </section>
+        </div>
+        <aside class="guide">
+          <h3>03. Baca token dan estimasi</h3>
+          <p class="path">Log Analytics workspace &rarr; Workbooks &rarr; Edit</p>
+          <p>Tempel KQL terbaru dengan sumber <strong>Logs</strong>, workspace yang sama, dan tampilan <strong>Grid</strong>.</p>
+          <ol>
+            <li>Pilih <strong>Run Query</strong> saat periode query mencakup trafik.</li>
+            <li>Baca <strong>Grid hasil</strong>: kolom model, project jika tercatat, dan total token. Periksa <code>StatusHarga</code> sebelum memakai <code>EstimasiUSD</code>.</li>
+          </ol>
+          <p class="note">Pakai screenshot lama untuk mengenali tombol dan grid. Untuk kolom estimasi dan status harga, lihat hasil KQL terbaru di bawahnya.</p>
+          <a class="action" href="workshop-monitoring-foundry.html#kql">Buka KQL di workshop <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="topic" id="bukti" aria-labelledby="bukti-title">
+      <div class="section-head"><div><p class="kicker">Bukti lab</p><h2 id="bukti-title">Bedakan screenshot dan hasil baca Azure</h2></div></div>
+      <p class="section-lead">Dua screenshot portal yang sudah ada menunjukkan lokasi kontrol. Bukti tambahan di setiap tahap berasal dari Azure yang dibaca lewat CLI, bukan gambar layar portal baru. Semuanya tampil sebagai snapshot, bukan data live.</p>
+      <ol class="evidence">
+        <li class="sheet"><p class="kicker">01 &middot; Screenshot lama + konfigurasi</p><h3>Diagnostic settings</h3><p>Screenshot menunjukkan lokasi menu. Hasil baca Azure mengonfirmasi dua kategori aktif dan workspace tujuannya.</p></li>
+        <li class="sheet"><p class="kicker">02 &middot; Hasil query</p><h3>Log Analytics</h3><p>Query langsung ke workspace memberikan jumlah baris per kategori tanpa menampilkan payload mentah.</p></li>
+        <li class="sheet"><p class="kicker">03 &middot; Screenshot lama + hasil KQL</p><h3>Workbook</h3><p>Grid historis menjelaskan cara membaca layar. Ringkasan terpisah berasal dari KQL terbaru yang dijalankan langsung ke workspace, bukan dari Workbook yang disimpan ulang.</p></li>
+        <li class="sheet"><p class="kicker">Opsional &middot; Belum diverifikasi</p><h3>Azure Cost Management</h3><p>Biaya tercatat Azure bukan angka estimasi dari KQL. Tidak ada angka tagihan yang disalin ke materi ini.</p></li>
+      </ol>
+    </section>
+    <footer class="footer"><p>Halaman ini tidak menjalankan query atau mengubah Azure. Samarkan nama dan ID sensitif sebelum membagikan screenshot ke luar tim.</p><a class="action" href="workshop-monitoring-foundry.html">Buka panduan lengkap</a></footer>
+  </main>
+
+  <dialog class="zoom" id="zoom" aria-labelledby="zoom-title">
+    <div class="zoom-head">
+      <h2 id="zoom-title">Screenshot portal</h2>
+      <form class="zoom-actions" method="dialog">
+        <button type="button" class="subtle" id="zoom-size" aria-pressed="false">Ukuran asli</button>
+        <button type="submit" class="subtle" autofocus>Tutup</button>
+      </form>
+    </div>
+    <div class="zoom-body" role="region" aria-label="Screenshot portal, dapat digulir pada ukuran asli" tabindex="0">
+      <img src="assets/foundry-diagnostic-settings.png" alt="">
+    </div>
+  </dialog>
+  <script>
+    const stepPicker = document.querySelector(".steps");
+    const tabs = [...stepPicker.querySelectorAll(".step")];
+    const panels = tabs.map(tab => document.getElementById(tab.getAttribute("aria-controls")));
+
+    function selectStep(index) {
+      tabs.forEach((tab, position) => {
+        const selected = position === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        panels[position].hidden = !selected;
+      });
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectStep(index));
+      tab.addEventListener("keydown", event => {
+        let next;
+        switch (event.key) {
+          case "ArrowRight": case "ArrowDown": next = (index + 1) % tabs.length; break;
+          case "ArrowLeft": case "ArrowUp": next = (index - 1 + tabs.length) % tabs.length; break;
+          case "Home": next = 0; break;
+          case "End": next = tabs.length - 1; break;
+          default: return;
+        }
+        event.preventDefault();
+        selectStep(next);
+        tabs[next].focus();
+      });
+    });
+    selectStep(0);
+    stepPicker.hidden = false;
+
+    const zoom = document.getElementById("zoom");
+    const zoomTitle = document.getElementById("zoom-title");
+    const zoomSize = document.getElementById("zoom-size");
+    const zoomBody = zoom.querySelector(".zoom-body");
+    const zoomImage = zoomBody.querySelector("img");
+    let opener;
+
+    function showScreenshot(trigger, preview, title) {
+      opener = trigger;
+      zoomTitle.textContent = title;
+      zoomImage.src = preview.src;
+      zoomImage.alt = preview.alt;
+      zoomBody.classList.remove("full");
+      zoomSize.setAttribute("aria-pressed", "false");
+      zoom.showModal();
+      zoomBody.scrollTo(0, 0);
+    }
+
+    document.querySelectorAll("[data-preview-shot]").forEach(link => {
+      link.setAttribute("aria-haspopup", "dialog");
+      link.addEventListener("click", event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        showScreenshot(link, link.querySelector("img"), link.dataset.previewShot);
+      });
+    });
+
+    document.querySelectorAll("[data-capture]").forEach(capture => {
+      const controlGroup = capture.querySelector(".capture-controls");
+      const controls = [...controlGroup.querySelectorAll("[data-region]")];
+      const caption = capture.querySelector(".spot-caption");
+      controls.forEach(button => button.addEventListener("click", () => {
+        capture.dataset.focus = button.dataset.region;
+        controls.forEach(control => control.setAttribute("aria-pressed", String(control === button)));
+        caption.textContent = button.dataset.caption;
+      }));
+      controlGroup.hidden = false;
+      const preview = capture.querySelector("img");
+      const open = capture.querySelector("[data-open-shot]");
+      open.addEventListener("click", () => showScreenshot(open, preview, capture.querySelector("h3").textContent));
+      open.hidden = false;
+    });
+    zoomSize.addEventListener("click", () => {
+      const full = zoomBody.classList.toggle("full");
+      zoomSize.setAttribute("aria-pressed", String(full));
+      zoomBody.scrollTo(0, 0);
+    });
+    zoom.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        zoom.close();
+      }
+    });
+    zoom.addEventListener("close", () => opener.focus({ preventScroll: true }));
+  </script>
+</body>
+</html>

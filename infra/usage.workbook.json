@@ -1,0 +1,135 @@
+{
+  "version": "Notebook/1.0",
+  "fallbackResourceIds": ["__WORKSPACE_ID__"],
+  "items": [
+    {
+      "type": 1,
+      "name": "intro",
+      "content": {
+        "json": "# PAMADIGI - Foundry Usage\nLihat request, token, estimasi biaya, dan project pemanggil dalam satu halaman. Ubah **Periode**, **Project**, atau **Model** untuk memfilter pemakaian dan estimasi.\n\nSumber pemakaian: catatan dari generator lab yang terhubung. Panggilan dari aplikasi yang belum terhubung tidak dihitung di sini. **Biaya tercatat Azure** ada di bagian terpisah."
+      }
+    },
+    {
+      "type": 9,
+      "name": "filters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "style": "pills",
+        "parameters": [
+          {
+            "id": "38a0a150-edd0-4b6d-b32f-7700f20f62b6",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Periode",
+            "type": 4,
+            "isRequired": true,
+            "value": {"durationMs": 86400000},
+            "typeSettings": {
+              "allowCustom": true,
+              "selectableValues": [{"durationMs": 3600000}, {"durationMs": 86400000}, {"durationMs": 604800000}, {"durationMs": 2592000000}]
+            }
+          },
+          {
+            "id": "d5fa576c-f8fc-49a2-b296-345b07893fa4",
+            "version": "KqlParameterItem/1.0",
+            "name": "Project",
+            "type": 2,
+            "isRequired": true,
+            "value": "_all_",
+            "jsonData": "[{\"value\":\"_all_\",\"label\":\"Semua project\",\"selected\":true},{\"value\":\"ops-shift\",\"label\":\"Operasi Shift\"},{\"value\":\"maintenance\",\"label\":\"Maintenance\"},{\"value\":\"supply-chain\",\"label\":\"Supply Chain\"}]"
+          },
+          {
+            "id": "cf01ef3a-8734-4f46-a442-025860ce84e3",
+            "version": "KqlParameterItem/1.0",
+            "name": "Model",
+            "type": 2,
+            "isRequired": true,
+            "value": "_all_",
+            "jsonData": "[{\"value\":\"_all_\",\"label\":\"Semua model\",\"selected\":true},{\"value\":\"gpt-5-nano\",\"label\":\"GPT-5 nano\"},{\"value\":\"gpt-5-mini\",\"label\":\"GPT-5 mini\"},{\"value\":\"gpt-5.4-mini\",\"label\":\"GPT-5.4 mini\"},{\"value\":\"gpt-6.1-terra\",\"label\":\"GPT-6.1 Terra\"},{\"value\":\"gpt-6.1-sol\",\"label\":\"GPT-6.1 Sol\"}]"
+          }
+        ]
+      }
+    },
+    {
+      "type": 3,
+      "name": "usage-totals",
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Total pada filter yang dipilih",
+        "query": "__FILTERED_EVENTS__\n__RATED_EVENTS__\nRatedEvents\n| summarize Requests=count(), HTTP2xx=countif(HttpStatus between (200 .. 299)), Projects=dcount(Project), Models=dcount(Model), AdaUsage=countif(isnotnull(TotalTokens)), TotalToken=sum(TotalTokens), RequestTerakhir=max(TimeGenerated), EstimasiUSD=sum(EstimatedUSD), RequestTanpaEstimasi=countif(isnull(EstimatedUSD))\n| extend TotalToken=iff(AdaUsage == 0, long(null), TotalToken), EstimasiUSD=iff(Requests == RequestTanpaEstimasi, real(null), round(EstimasiUSD, 6))\n| project Requests, HTTP2xx, Projects, Models, AdaUsage, TotalToken, EstimasiUSD, RequestTanpaEstimasi, RequestTerakhir",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": ["__WORKSPACE_ID__"],
+        "visualization": "table"
+      }
+    },
+    {
+      "type": 3,
+      "name": "per-project-model",
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Request dan token per project × model",
+        "query": "__FILTERED_EVENTS__\n__RATED_EVENTS__\nRatedEvents\n| summarize Requests=count(), HTTP2xx=countif(HttpStatus between (200 .. 299)), AdaUsage=countif(isnotnull(TotalTokens)), InputToken=sum(InputTokens), OutputToken=sum(OutputTokens), TotalToken=sum(TotalTokens), EstimasiUSD=sum(EstimatedUSD), RequestTanpaEstimasi=countif(isnull(EstimatedUSD)) by Project, Model, Deployment\n| extend InputToken=iff(AdaUsage == 0, long(null), InputToken), OutputToken=iff(AdaUsage == 0, long(null), OutputToken), TotalToken=iff(AdaUsage == 0, long(null), TotalToken), EstimasiUSD=iff(Requests == RequestTanpaEstimasi, real(null), round(EstimasiUSD, 6))\n| order by Project asc, Requests desc, Model asc",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": ["__WORKSPACE_ID__"],
+        "visualization": "table",
+        "exportToExcelOptions": "visible"
+      }
+    },
+    {
+      "type": 1,
+      "name": "cost-guide",
+      "content": {
+        "json": "## Cara baca biaya\n**EstimasiUSD** memakai token input/output dan [tarif publik Global Standard](https://azure.microsoft.com/en-us/pricing/details/azure-openai/) (short context, dicek 18 November 2026). Ini bukan tagihan dan belum menyesuaikan tarif cache, kontrak, kredit, atau pajak. Kalau **RequestTanpaEstimasi** lebih dari nol, angka hanya mencakup request yang bisa dihitung.\n\n**Biaya tercatat Azure** berasal dari Azure Cost Management, untuk resource Foundry lab pada **bulan berjalan**, sebelum pajak. Bagian ini tidak mengikuti filter di atas dan dapat mencakup trafik di luar generator. Jika belum ada baris, data billing belum tersedia; bukan berarti biayanya nol. Akses mengikuti izin Cost Management."
+      }
+    },
+    {
+      "type": 3,
+      "name": "billed-cost",
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Biaya tercatat Azure - bulan berjalan",
+        "query": "__BILLED_COST_QUERY__",
+        "size": 0,
+        "queryType": 12,
+        "visualization": "table",
+        "noDataMessage": "Belum ada data biaya untuk resource Foundry lab pada bulan berjalan."
+      }
+    },
+    {
+      "type": 3,
+      "name": "request-trend",
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Tren jumlah request per project",
+        "query": "__FILTERED_EVENTS__\nEvents\n| summarize Requests=count() by bin(TimeGenerated, {TimeRange:grain}), Project\n| order by TimeGenerated asc",
+        "size": 1,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": ["__WORKSPACE_ID__"],
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "name": "request-details",
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "100 request terakhir pada filter yang dipilih",
+        "query": "__FILTERED_EVENTS__\nEvents\n| project TimeGenerated, Project, Model, Deployment, HttpStatus, ResponseStatus, TotalTokens, LatencyMs, ApiRequestId, Run\n| top 100 by TimeGenerated desc",
+        "size": 1,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": ["__WORKSPACE_ID__"],
+        "visualization": "table"
+      }
+    }
+  ]
+}

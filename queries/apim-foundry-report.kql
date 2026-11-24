@@ -1,0 +1,75 @@
+let Mulai = ago(24h);
+let Selesai = now();
+let IdFilter = ""; // Kosong = semua; isi dengan x-pamadigi-request-id untuk satu transaksi.
+let AppInsights = "appi-foundrydemoresourcedigi1-9551";
+let FoundryAccount = "foundrydemoresourcedigi1";
+let RequestGuid = @"^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$";
+let Gateway = materialize(
+    union isfuzzy=true AppTraces, (datatable(TimeGenerated:datetime, Message:string, Properties:dynamic, _ResourceId:string, AppRoleName:string) [])
+    | where TimeGenerated between (Mulai .. Selesai)
+    | where tolower(_ResourceId) endswith strcat("/microsoft.insights/components/", AppInsights)
+    | where AppRoleName startswith "apim-pamadigi-chat-"
+    | where Message in ("backend-response", "gateway-error", "route-rejected")
+    | extend IdGateway=tolower(tostring(Properties.GatewayRequestId)), IdFoundry=tolower(tostring(Properties.FoundryRequestId)),
+        Rute=tostring(Properties.ApiId), Subscription=tostring(Properties.SubscriptionId),
+        ProjectTujuan=tostring(Properties.ProjectTarget), DeploymentTujuan=tostring(Properties.DeploymentTarget),
+        Alasan=tostring(Properties.Reason), HTTP=toint(Properties.GatewayStatus), LatensiMs=tolong(Properties.ElapsedMs),
+        U=parse_json(tostring(Properties.HttpUsage)), Diteruskan=(Message == "backend-response")
+    | where IdGateway matches regex RequestGuid and Rute in ("main", "project-x", "project-y")
+    | where isempty(IdFilter) or IdGateway =~ IdFilter
+    | extend InputRespons=tolong(U.prompt_tokens), OutputRespons=tolong(U.completion_tokens)
+    | summarize arg_max(TimeGenerated, *) by IdGateway
+    | extend IdFoundry=iff(IdFoundry matches regex RequestGuid, IdFoundry, ""),
+        Aplikasi=case(Subscription == "pamadigi-main", "Main", Subscription == "pamadigi-project-x", "Project X",
+            Subscription == "pamadigi-project-y", "Project Y", "Tidak terautentikasi")
+    | project TimeGenerated, IdGateway, IdFoundry, Aplikasi, Subscription, Rute, ProjectTujuan, DeploymentTujuan,
+        HTTP, LatensiMs, Alasan, Diteruskan, InputRespons, OutputRespons
+);
+let CandidateIds = Gateway | where isnotempty(IdFoundry) | summarize JumlahGateway=count() by IdFoundry;
+let FoundryRows = materialize(
+    AzureDiagnostics
+    | where TimeGenerated between ((Mulai - 5m) .. (Selesai + 5m))
+    | where tolower(_ResourceId) endswith strcat("/microsoft.cognitiveservices/accounts/", FoundryAccount)
+    | where Category in ("RequestResponse", "AzureOpenAIRequestUsage")
+    | extend IdFoundry=tolower(CorrelationId), P=parse_json(column_ifexists("properties_s", ""))
+    | where IdFoundry in (CandidateIds | project IdFoundry)
+    | project IdFoundry, Category, P
+);
+let NativeProject = FoundryRows
+    | where Category == "RequestResponse"
+    | extend Project=tostring(P["project"])
+    | summarize Projects=make_set_if(Project, isnotempty(Project), 2) by IdFoundry
+    | extend ProjectKonflik=array_length(Projects) > 1, ProjectTercatat=iff(array_length(Projects) == 1, tostring(Projects[0]), "")
+    | project IdFoundry, ProjectKonflik, ProjectTercatat;
+let NativeUsage = FoundryRows
+    | where Category == "AzureOpenAIRequestUsage"
+    | extend Model=tostring(P.modelName), Versi=tostring(P.modelVersion), Deployment=tostring(P.modelDeploymentName),
+        I=tolong(array_sum(P.promptTokens)), O=tolong(array_sum(P.generatedTokens)),
+        C=tolong(array_sum(P.cachedTokens)), W=tolong(array_sum(P.cacheWriteTokens)), W12=tolong(array_sum(P.cacheWriteTokens12h)),
+        LongInput=tolong(array_sum(P.longContextPromptTokens)), LongOutput=tolong(array_sum(P.longContextGeneratedTokens))
+    | distinct IdFoundry, Model, Versi, Deployment, I, O, C, W, W12, LongInput, LongOutput
+    | summarize Rows=count(), take_any(Model, Versi, Deployment, I, O, C, W, W12, LongInput, LongOutput) by IdFoundry;
+Gateway
+| lookup kind=leftouter CandidateIds on IdFoundry
+| lookup kind=leftouter NativeProject on IdFoundry
+| lookup kind=leftouter NativeUsage on IdFoundry
+| extend StatusCocok=case(
+    not(Diteruskan), "Tidak ada respons model",
+    isempty(IdFoundry) or isnull(Rows), "Belum terhubung",
+    JumlahGateway != 1 or Rows != 1 or ProjectKonflik, "ID atau metadata bertentangan",
+    Deployment !~ DeploymentTujuan or (isnotempty(ProjectTercatat) and ProjectTercatat !~ ProjectTujuan), "Tujuan tidak cocok",
+    "Cocok")
+| extend NativeOK=StatusCocok == "Cocok" and I >= 0 and O >= 0
+| extend InputToken=iff(NativeOK, I + coalesce(LongInput, 0), InputRespons),
+    OutputToken=iff(NativeOK, O + coalesce(LongOutput, 0), OutputRespons),
+    SumberToken=case(NativeOK, "AzureOpenAIRequestUsage", isnotnull(InputRespons) and isnotnull(OutputRespons), "usage dari HTTP", "Tidak tersedia"),
+    Fresh=I-C-W-W12
+| extend EstimasiUSD=iff(NativeOK and Model =~ "gpt-5.6-sol" and Versi startswith "2026-07-09"
+    and Fresh >= 0 and C >= 0 and W >= 0 and W12 >= 0
+    and coalesce(LongInput, 0) == 0 and coalesce(LongOutput, 0) == 0,
+    round((4.0*Fresh + 0.4*C + 5.0*W + 10.0*W12 + 20.0*O)/1000000.0, 8), real(null))
+| project TimeGenerated, Aplikasi, Subscription, Rute, HTTP, LatensiMs, Alasan, Diteruskan, ProjectTujuan,
+    ProjectTercatat=iff(StatusCocok == "Cocok", ProjectTercatat, ""), DeploymentTujuan,
+    DeploymentTercatat=iff(StatusCocok == "Cocok", Deployment, ""), InputToken, OutputToken,
+    TotalToken=InputToken+OutputToken, SumberToken, EstimasiUSD, StatusCocok, IdGateway, IdFoundry
+| order by TimeGenerated desc

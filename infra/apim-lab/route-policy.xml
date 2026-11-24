@@ -1,0 +1,116 @@
+<policies>
+  <inbound>
+    <base />
+    <choose>
+      <when condition="@(context.Subscription?.Id != &quot;__SUBSCRIPTION__&quot; || context.Request.Url.Query.Count != 0)">
+        <trace source="pamadigi-apim-lab" severity="information">
+          <message>route-rejected</message>
+          <metadata name="GatewayRequestId" value="@(context.RequestId.ToString())" />
+          <metadata name="ApiId" value="@(context.Api.Id)" />
+          <metadata name="SubscriptionId" value="@(String.IsNullOrEmpty(context.Subscription?.Id) ? &quot;unauthenticated&quot; : context.Subscription.Id)" />
+          <metadata name="GatewayStatus" value="403" />
+          <metadata name="Reason" value="ScopeOrQueryRejected" />
+        </trace>
+        <return-response>
+          <set-status code="403" reason="Forbidden" />
+          <set-header name="x-pamadigi-request-id" exists-action="override"><value>@(context.RequestId.ToString())</value></set-header>
+        </return-response>
+      </when>
+    </choose>
+    <validate-content unspecified-content-type-action="ignore" max-size="6144" size-exceeded-action="prevent" />
+    <set-variable name="safeChat" value="@{
+      var media = context.Request.Headers.GetValueOrDefault(&quot;Content-Type&quot;, &quot;&quot;).Split(';')[0].Trim();
+      if (!String.Equals(media, &quot;application/json&quot;, StringComparison.OrdinalIgnoreCase)) { return String.Empty; }
+      var raw = context.Request.Body.As&lt;string&gt;();
+      if (String.IsNullOrEmpty(raw) || raw.Length > 6144) { return String.Empty; }
+      try {
+        var request = JObject.Parse(raw);
+        var messages = request[&quot;messages&quot;] as JArray;
+        if (messages == null || messages.Count == 0 || messages.Count > 4) { return String.Empty; }
+        if (request[&quot;stream&quot;]?.ToString().ToLowerInvariant() == &quot;true&quot;) { return String.Empty; }
+        if (request[&quot;tools&quot;] != null || request[&quot;functions&quot;] != null) { return String.Empty; }
+        var safe = new JArray();
+        int length = 0;
+        foreach (var item in messages) {
+          var msg = item as JObject;
+          if (msg == null || msg[&quot;role&quot;]?.Type != JTokenType.String ||
+              msg[&quot;content&quot;]?.Type != JTokenType.String) { return String.Empty; }
+          var role = (string)msg[&quot;role&quot;];
+          var text = (string)msg[&quot;content&quot;];
+          if (role != &quot;user&quot; &amp;&amp; role != &quot;assistant&quot; &amp;&amp; role != &quot;system&quot; &amp;&amp; role != &quot;developer&quot;) { return String.Empty; }
+          if (String.IsNullOrWhiteSpace(text)) { return String.Empty; }
+          length += text.Length;
+          if (length > 700) { return String.Empty; }
+          safe.Add(new JObject(new JProperty(&quot;role&quot;, role), new JProperty(&quot;content&quot;, text)));
+        }
+        return new JObject(new JProperty(&quot;model&quot;, &quot;__DEPLOYMENT__&quot;),
+          new JProperty(&quot;messages&quot;, safe), new JProperty(&quot;max_completion_tokens&quot;, 256),
+          new JProperty(&quot;reasoning_effort&quot;, &quot;none&quot;), new JProperty(&quot;store&quot;, false)).ToString(Newtonsoft.Json.Formatting.None);
+      } catch (Newtonsoft.Json.JsonException) {
+        return String.Empty;
+      }
+    }" />
+    <choose>
+      <when condition="@(String.IsNullOrEmpty((string)context.Variables[&quot;safeChat&quot;]))">
+        <trace source="pamadigi-apim-lab" severity="information">
+          <message>route-rejected</message>
+          <metadata name="GatewayRequestId" value="@(context.RequestId.ToString())" />
+          <metadata name="ApiId" value="@(context.Api.Id)" />
+          <metadata name="SubscriptionId" value="@(context.Subscription.Id)" />
+          <metadata name="GatewayStatus" value="400" />
+          <metadata name="Reason" value="InvalidChatInput" />
+        </trace>
+        <return-response>
+          <set-status code="400" reason="Bad Request" />
+          <set-header name="x-pamadigi-request-id" exists-action="override"><value>@(context.RequestId.ToString())</value></set-header>
+          <set-header name="Content-Type" exists-action="override"><value>application/json</value></set-header>
+          <set-body>{"error":{"message":"Gunakan chat teks, maksimal 700 karakter; tanpa streaming atau tools.","code":"invalid_chat_input"}}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <set-backend-service base-url="https://__FOUNDRY__.services.ai.azure.com" />
+    <rewrite-uri template="/api/projects/__PROJECT__/openai/v1/chat/completions" copy-unmatched-params="false" />
+    <set-body>@((string)context.Variables["safeChat"])</set-body>
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+    <set-header name="Authorization" exists-action="delete" />
+    <set-header name="Cookie" exists-action="delete" />
+    <authentication-managed-identity resource="https://ai.azure.com" />
+  </inbound>
+  <backend><base /></backend>
+  <outbound>
+    <base />
+    <set-variable name="foundryUsage" value="@{
+      if (context.Response.StatusCode != 200) { return &quot;{}&quot;; }
+      try {
+        var body = context.Response.Body.As&lt;JObject&gt;(preserveContent: true);
+        var u = body[&quot;usage&quot;] as JObject;
+        if (u == null) { return &quot;{}&quot;; }
+        var clean = new JObject();
+        foreach (var key in new [] { &quot;prompt_tokens&quot;, &quot;completion_tokens&quot;, &quot;total_tokens&quot; }) {
+          var count = u[key];
+          if (count?.Type == JTokenType.Integer) { clean[key] = (long)count; }
+        }
+        return clean.ToString(Newtonsoft.Json.Formatting.None);
+      } catch (Newtonsoft.Json.JsonException) {
+        return &quot;{}&quot;;
+      }
+    }" />
+    <trace source="pamadigi-apim-lab" severity="information">
+      <message>backend-response</message>
+      <metadata name="GatewayRequestId" value="@(context.RequestId.ToString())" />
+      <metadata name="ApiId" value="@(context.Api.Id)" />
+      <metadata name="SubscriptionId" value="@(context.Subscription.Id)" />
+      <metadata name="ProjectTarget" value="__PROJECT__" />
+      <metadata name="DeploymentTarget" value="__DEPLOYMENT__" />
+      <metadata name="GatewayStatus" value="@(context.Response.StatusCode.ToString())" />
+      <metadata name="ElapsedMs" value="@(context.Elapsed.TotalMilliseconds.ToString(&quot;F0&quot;))" />
+      <metadata name="FoundryRequestId" value="@{
+        Guid parsed;
+        return Guid.TryParse(context.Response.Headers.GetValueOrDefault(&quot;apim-request-id&quot;, &quot;&quot;), out parsed) ? parsed.ToString() : &quot;unavailable&quot;;
+      }" />
+      <metadata name="HttpUsage" value="@((string)context.Variables[&quot;foundryUsage&quot;])" />
+    </trace>
+  </outbound>
+  <on-error><base /></on-error>
+</policies>
